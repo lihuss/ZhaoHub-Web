@@ -77,8 +77,5 @@ jobs:
         ssh -p ${SERVER_PORT:-22} ${SERVER_USER}@${SERVER_HOST} "bash -s" << 'EOF'
         set -e
         cd "${TARGET_DIR}"
-        # 如果你在服务器上放了 ./restart.sh，会自动执行它
-        if [ -x ./restart.sh ]; then
-          sh ./restart.sh
-        fi
+        sh ./restart.sh > log.txt
         EOF
