@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= currentClass.fullName %> - 回忆录</title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"> <link rel="stylesheet" href="/css/style.css">
+    <title><%= currentClass.full_name %> - 回忆录</title> <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="app-page">
     <nav class="glass-nav fixed-top p-3 shadow-sm">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="/hall" class="btn btn-sm btn-outline-success"><i class="fas fa-arrow-left"></i> 返回大厅</a>
-            <span class="fw-bold fs-5 text-success-dark"><%= currentClass.fullName %></span>
+            <span class="fw-bold fs-5 text-success-dark"><%= currentClass.full_name %></span>
             <img src="/images/mascot.jpg" class="rounded-circle" width="35" height="35" style="object-fit:cover;">
         </div>
     </nav>
@@ -21,7 +21,7 @@
             <div class="col-md-4 mb-4">
                 <div class="glass-card p-3 sticky-top" style="top: 90px; z-index: 1;">
                     <h5 class="mb-3">📝 写下回忆</h5>
-                    <form action="/class/<%= currentClass._id %>/post" method="POST" enctype="multipart/form-data">
+                    <form action="/class/<%= currentClass.id %>/post" method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
                             <textarea name="content" class="form-control" rows="4" placeholder="今天发生了什么有趣的事..." required></textarea>
                         </div>
@@ -42,7 +42,7 @@
                                 <img src="/images/mascot.jpg" class="rounded-circle me-2" width="40" height="40" style="object-fit:cover">
                                 <div>
                                     <div class="fw-bold">肇中同学</div>
-                                    <small class="text-muted"><%= moment(post.createdAt).format('YYYY-MM-DD HH:mm') %></small>
+                                    <small class="text-muted"><%= moment(post.created_at).format('YYYY-MM-DD HH:mm') %></small>
                                 </div>
                             </div>
                         </div>
@@ -56,12 +56,12 @@
 
                         <div class="bg-light bg-opacity-50 p-2 d-flex justify-content-between align-items-center border-top border-light">
                             <div>
-                                <form action="/post/<%= post._id %>/like" method="POST" class="d-inline">
+                                <form action="/post/<%= post.id %>/like" method="POST" class="d-inline">
                                     <button type="submit" class="btn btn-sm text-danger"><i class="far fa-heart"></i> <%= post.likes %></button>
                                 </form>
                                 <span class="text-muted small ms-2"><i class="far fa-comment"></i> <%= post.comments.length %></span>
                             </div>
-                            <form action="/post/<%= post._id %>/report" method="POST" class="d-inline">
+                            <form action="/post/<%= post.id %>/report" method="POST" class="d-inline">
                                 <button type="submit" class="btn btn-sm text-muted small">⚠️ 举报</button>
                             </form>
                         </div>
@@ -77,7 +77,7 @@
                         <% } %>
 
                         <div class="p-2 border-top border-light">
-                            <form action="/post/<%= post._id %>/comment" method="POST" class="input-group input-group-sm">
+                            <form action="/post/<%= post.id %>/comment" method="POST" class="input-group input-group-sm">
                                 <input type="text" name="commentContent" class="form-control border-0 bg-light" placeholder="评论一句..." required>
                                 <button class="btn btn-outline-secondary" type="submit">发送</button>
                             </form>
