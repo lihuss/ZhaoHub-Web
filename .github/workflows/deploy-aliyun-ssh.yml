@@ -78,5 +78,5 @@ jobs:
         set -e
         cd "${TARGET_DIR}"
         echo "${TARGET_DIR}" > log.txt
-        sh /var/www/zqqzx/restart.sh > log.txt
+        sh /var/www/zqzx/restart.sh > log.txt
         EOF
