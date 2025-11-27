@@ -1,3 +1,4 @@
-README_DEPLOY.md
-deploy_key
-deploy_key.pub
+node_modules/
+*.zip
+*.log
+.DS_Store
