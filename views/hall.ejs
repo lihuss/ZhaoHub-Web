@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>班级大厅 - 肇中2025</title>
+    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="app-page">
+    <div class="container py-5">
+        <div class="glass-header text-center mb-5 p-4 rounded-4">
+            <img src="/images/logo.png" height="60" class="mb-3">
+            <h2 class="fw-bold text-success-dark">2025届 班级大厅</h2>
+            <p class="text-secondary">找到属于你的集体，留下青春的足迹</p>
+        </div>
+
+        <div class="glass-card mb-5 p-4">
+            <h5 class="mb-3">🚩 开通新班级</h5>
+            <form action="/create-class" method="POST" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <span class="form-text fw-bold fs-5">2025届</span>
+                </div>
+                <div class="col-auto flex-grow-1">
+                    <input type="text" name="className" class="form-control" placeholder="输入班级，如：高三(15)班" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success">立即开通</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="row g-4">
+            <% classes.forEach(cls => { %>
+                <div class="col-6 col-md-4 col-lg-3">
+                    <a href="/class/<%= cls._id %>" class="text-decoration-none">
+                        <div class="glass-card class-card text-center p-4 h-100">
+                            <div class="icon mb-2">🏫</div>
+                            <h5 class="fw-bold text-dark"><%= cls.fullName %></h5>
+                            <small class="text-muted">点击进入</small>
+                        </div>
+                    </a>
+                </div>
+            <% }) %>
+            <% if(classes.length === 0) { %>
+                <div class="col-12 text-center text-muted">
+                    <p>还没有班级开通哦，快去创建第一个吧！</p>
+                </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>
