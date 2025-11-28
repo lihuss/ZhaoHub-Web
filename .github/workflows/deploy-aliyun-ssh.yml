@@ -74,7 +74,8 @@ jobs:
         SERVER_HOST: ${{ secrets.SERVER_HOST }}
         SERVER_PORT: ${{ secrets.SERVER_PORT }}
       run: |
-        ssh -p ${SERVER_PORT:-22} ${SERVER_USER}@${SERVER_HOST} "bash -s" << 'EOF'
+        ssh -p ${SERVER_PORT:-22} ${SERVER_USER}@${SERVER_HOST} "bash -s" << EOF
         set -e
-        pm2 restart ${TARGET_DIR}/server.js || pm2 start ${TARGET_DIR}/server.js
+        cd ${TARGET_DIR}
+        pm2 restart server.js || pm2 start server.js
         EOF
