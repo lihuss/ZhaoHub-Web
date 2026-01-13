@@ -195,27 +195,53 @@ app.get('/my-codes', requireAuth, async (req, res) => {
 
 // --- 管理员路由 ---
 
-// 获取管理面板数据
+// 获取管理面板数据（容错处理，部分表可能不存在）
 async function getAdminData() {
-    const systemCodes = await auth.getSystemInviteCodes();
+    let systemCodes = [];
+    let classes = [];
+    let reports = [];
 
-    // 获取班级列表及帖子数
-    const [classes] = await db.query(`
-        SELECT c.*, COUNT(p.id) as post_count 
-        FROM classes c 
-        LEFT JOIN posts p ON c.id = p.class_id 
-        GROUP BY c.id 
-        ORDER BY c.created_at DESC
-    `);
+    // 获取系统邀请码
+    try {
+        systemCodes = await auth.getSystemInviteCodes();
+    } catch (err) {
+        console.error('获取邀请码失败:', err.message);
+    }
 
-    // 获取举报列表
-    const [reports] = await db.query(`
-        SELECT r.*, p.content as post_content, p.class_id, u.username as reporter_name
-        FROM reports r
-        LEFT JOIN posts p ON r.post_id = p.id
-        LEFT JOIN users u ON r.reporter_id = u.id
-        ORDER BY r.created_at DESC
-    `);
+    // 获取班级列表（简单查询，不依赖其他表）
+    try {
+        const [rows] = await db.query('SELECT * FROM classes ORDER BY created_at DESC');
+        classes = rows;
+
+        // 尝试获取每个班级的帖子数
+        for (let cls of classes) {
+            try {
+                const [countResult] = await db.query(
+                    'SELECT COUNT(*) as count FROM posts WHERE class_id = ?',
+                    [cls.id]
+                );
+                cls.post_count = countResult[0].count;
+            } catch (e) {
+                cls.post_count = 0;
+            }
+        }
+    } catch (err) {
+        console.error('获取班级列表失败:', err.message);
+    }
+
+    // 获取举报列表（表可能不存在）
+    try {
+        const [rows] = await db.query(`
+            SELECT r.*, p.content as post_content, p.class_id, u.username as reporter_name
+            FROM reports r
+            LEFT JOIN posts p ON r.post_id = p.id
+            LEFT JOIN users u ON r.reporter_id = u.id
+            ORDER BY r.created_at DESC
+        `);
+        reports = rows;
+    } catch (err) {
+        console.error('获取举报列表失败:', err.message);
+    }
 
     return { systemCodes, classes, reports };
 }
@@ -362,25 +388,45 @@ app.get('/class/:id', requireAuth, async (req, res) => {
         if (classRows.length === 0) return res.redirect('/hall');
         const currentClass = classRows[0];
 
-        // 获取帖子及发布者信息
-        const [posts] = await db.query(`
-            SELECT p.*, u.username as author_name 
-            FROM posts p 
-            LEFT JOIN users u ON p.user_id = u.id 
-            WHERE p.class_id = ? 
-            ORDER BY p.created_at DESC
-        `, [classId]);
+        // 获取帖子（容错处理）
+        let posts = [];
+        try {
+            // 尝试带 user_id 的查询
+            const [rows] = await db.query(`
+                SELECT p.*, u.username as author_name 
+                FROM posts p 
+                LEFT JOIN users u ON p.user_id = u.id 
+                WHERE p.class_id = ? 
+                ORDER BY p.created_at DESC
+            `, [classId]);
+            posts = rows;
+        } catch (err) {
+            // 如果失败，使用简单查询
+            console.error('帖子查询失败，使用简单查询:', err.message);
+            const [rows] = await db.query('SELECT * FROM posts WHERE class_id = ? ORDER BY created_at DESC', [classId]);
+            posts = rows.map(p => ({ ...p, author_name: null }));
+        }
 
-        // 获取评论及发布者信息
+        // 获取评论（容错处理）
         for (let post of posts) {
-            const [comments] = await db.query(`
-                SELECT c.*, u.username as author_name 
-                FROM comments c 
-                LEFT JOIN users u ON c.user_id = u.id 
-                WHERE c.post_id = ? 
-                ORDER BY c.created_at ASC
-            `, [post.id]);
-            post.comments = comments;
+            try {
+                const [comments] = await db.query(`
+                    SELECT c.*, u.username as author_name 
+                    FROM comments c 
+                    LEFT JOIN users u ON c.user_id = u.id 
+                    WHERE c.post_id = ? 
+                    ORDER BY c.created_at ASC
+                `, [post.id]);
+                post.comments = comments;
+            } catch (err) {
+                // 简单查询
+                try {
+                    const [comments] = await db.query('SELECT * FROM comments WHERE post_id = ? ORDER BY created_at ASC', [post.id]);
+                    post.comments = comments.map(c => ({ ...c, author_name: null }));
+                } catch (e) {
+                    post.comments = [];
+                }
+            }
 
             // 检查当前用户是否已点赞（表可能不存在）
             try {
@@ -390,15 +436,14 @@ app.get('/class/:id', requireAuth, async (req, res) => {
                 );
                 post.userLiked = likeCheck.length > 0;
             } catch (likeErr) {
-                // 如果 post_likes 表不存在，默认未点赞
                 post.userLiked = false;
             }
         }
 
         res.render('class', { currentClass, posts, moment });
     } catch (err) {
-        console.log(err);
-        res.redirect('/hall');
+        console.error('班级页面加载失败:', err);
+        res.status(500).send(`加载失败: ${err.message}`);
     }
 });
 

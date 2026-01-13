@@ -11,7 +11,6 @@
     <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <style>
-        /* 修复顶部导航遮挡问题 */
         body {
             padding-top: 70px;
         }
@@ -21,14 +20,12 @@
             z-index: 1030;
         }
 
-        /* 发帖区域样式优化 */
         .post-form-card {
             position: sticky;
             top: 80px;
             z-index: 10;
         }
 
-        /* 匿名ID样式 */
         .anon-id {
             display: inline-block;
             padding: 2px 8px;
@@ -47,7 +44,6 @@
             color: #495057;
         }
 
-        /* 评论区优化 */
         .comment-item {
             padding: 8px 0;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -57,7 +53,6 @@
             border-bottom: none;
         }
 
-        /* 点赞按钮样式 */
         .like-btn {
             border: none;
             background: none;
@@ -73,7 +68,6 @@
             font-weight: 900;
         }
 
-        /* 匿名复选框样式 */
         .anon-check {
             accent-color: #667eea;
         }
@@ -87,7 +81,6 @@
             <span class="fw-bold fs-5 text-success-dark">
                 <%= currentClass.full_name %>
             </span>
-
             <% if (user) { %>
                 <div class="dropdown">
                     <button class="btn btn-sm btn-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -124,41 +117,32 @@
                     <h5 class="mb-3"><i class="fas fa-pen-fancy text-success me-2"></i>写下回忆</h5>
                     <form action="/class/<%= currentClass.id %>/post" method="POST" enctype="multipart/form-data">
                         <div class="mb-3">
-                            <textarea name="content" class="form-control" rows="5"
-                                placeholder="今天发生了什么有趣的事...&#10;分享给同学们吧！" required></textarea>
+                            <textarea name="content" class="form-control" rows="5" placeholder="今天发生了什么有趣的事..."
+                                required></textarea>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label text-muted small">
-                                <i class="fas fa-image me-1"></i>上传照片 (可选)
-                            </label>
+                            <label class="form-label text-muted small"><i class="fas fa-image me-1"></i>上传照片
+                                (可选)</label>
                             <input type="file" name="image" class="form-control form-control-sm" accept="image/*">
                         </div>
-
-                        <!-- 匿名发帖选项 -->
                         <div class="mb-3 form-check">
                             <input type="checkbox" class="form-check-input anon-check" id="anonymous" name="anonymous">
                             <label class="form-check-label text-muted small" for="anonymous">
-                                <i class="fas fa-user-secret me-1"></i>匿名发布（不显示你的用户名）
+                                <i class="fas fa-user-secret me-1"></i>匿名发布
                             </label>
                         </div>
-
-                        <button type="submit" class="btn btn-success w-100">
-                            <i class="fas fa-paper-plane me-2"></i>发布
-                        </button>
+                        <button type="submit" class="btn btn-success w-100"><i
+                                class="fas fa-paper-plane me-2"></i>发布</button>
                     </form>
-
                     <div class="mt-4 pt-3 border-top">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            评论区采用匿名ID，每个帖子内相同名字代表同一发言者
-                        </small>
+                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i>评论区采用匿名ID</small>
                     </div>
                 </div>
             </div>
 
             <!-- 右侧帖子流 -->
             <div class="col-lg-8 col-md-7">
-                <% if(posts.length===0) { %>
+                <% if (posts.length===0) { %>
                     <div class="glass-card p-5 text-center text-muted">
                         <i class="fas fa-inbox fa-3x mb-3"></i>
                         <h5>还没有帖子</h5>
@@ -166,63 +150,46 @@
                     </div>
                     <% } %>
 
-                        <% // 随机英文名列表 const randomNames=[ 'Alex' , 'Blake' , 'Casey' , 'Drew' , 'Eden' , 'Finn' , 'Gray'
-                            , 'Harper' , 'Ivy' , 'Jordan' , 'Kelly' , 'Logan' , 'Morgan' , 'Noah' , 'Ocean' , 'Parker'
-                            , 'Quinn' , 'Riley' , 'Sage' , 'Taylor' , 'Sky' , 'Avery' , 'Charlie' , 'Dakota' , 'Phoenix'
-                            , 'River' , 'Storm' , 'Winter' , 'Ash' , 'Blue' ]; // 基于帖子ID生成稳定的名字分配种子 function
-                            getShuffledNames(postId) { const seed=postId * 31; const shuffled=[...randomNames]; for (let
-                            i=shuffled.length - 1; i> 0; i--) {
-                            const j = (seed * (i + 1) * 17) % (i + 1);
-                            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+                        <% var randomNames=['Alex', 'Blake' , 'Casey' , 'Drew' , 'Eden' , 'Finn' , 'Gray' , 'Harper'
+                            , 'Ivy' , 'Jordan' , 'Kelly' , 'Logan' , 'Morgan' , 'Noah' , 'Ocean' , 'Parker' , 'Quinn'
+                            , 'Riley' , 'Sage' , 'Taylor' , 'Sky' , 'Avery' , 'Charlie' , 'Dakota' , 'Phoenix' , 'River'
+                            , 'Storm' , 'Winter' , 'Ash' , 'Blue' ]; function getShuffledNames(postId) { var seed=postId
+                            * 31; var shuffled=randomNames.slice(); for (var i=shuffled.length - 1; i> 0; i--) {
+                            var j = (seed * (i + 1) * 17) % (i + 1);
+                            var temp = shuffled[i];
+                            shuffled[i] = shuffled[j];
+                            shuffled[j] = temp;
                             }
                             return shuffled;
                             }
                             %>
 
-                            <% posts.forEach(post=> {
-                                // 为这个帖子获取打乱的名字列表
-                                const namesForPost = getShuffledNames(post.id);
-                                const userIdMap = {};
-                                let idCounter = 0;
-
-                                const getAnonName = (userId) => {
-                                if (!userId) return 'Anonymous';
-                                if (!userIdMap[userId]) {
-                                userIdMap[userId] = namesForPost[idCounter % namesForPost.length];
-                                idCounter++;
-                                }
-                                return userIdMap[userId];
-                                };
-
-                                // 帖子作者ID
-                                const posterUserId = post.user_id;
-                                // 帖子是否匿名
-                                const isAnonymousPost = post.is_anonymous;
-                                %>
+                            <% posts.forEach(function(post) { var namesForPost=getShuffledNames(post.id); var
+                                userIdMap={}; var idCounter=0; function getAnonName(userId) { if (!userId)
+                                return 'Anonymous' ; if (!userIdMap[userId]) { userIdMap[userId]=namesForPost[idCounter
+                                % namesForPost.length]; idCounter++; } return userIdMap[userId]; } var
+                                posterUserId=post.user_id; var isAnonymousPost=post.is_anonymous; %>
                                 <div class="glass-card mb-4 p-0 overflow-hidden">
                                     <!-- 帖子头部 -->
                                     <div class="p-3 border-bottom border-light">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div class="d-flex align-items-center">
-                                                <div class="rounded-circle bg-gradient d-flex align-items-center justify-content-center me-2"
-                                                    style="width: 42px; height: 42px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
-                                                    <%= isAnonymousPost ? '匿' : (post.author_name ?
-                                                        post.author_name.charAt(0).toUpperCase() : '?' ) %>
+                                        <div class="d-flex align-items-center">
+                                            <div class="rounded-circle d-flex align-items-center justify-content-center me-2"
+                                                style="width: 42px; height: 42px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: bold;">
+                                                <%= isAnonymousPost ? '匿' : (post.author_name ?
+                                                    post.author_name.charAt(0).toUpperCase() : '?' ) %>
+                                            </div>
+                                            <div>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold">
+                                                        <%= isAnonymousPost ? '匿名用户' : (post.author_name || '未知用户' ) %>
+                                                    </span>
+                                                    <% if (!isAnonymousPost && post.author_name) { %>
+                                                        <span class="anon-id anon-id-poster">楼主</span>
+                                                        <% } %>
                                                 </div>
-                                                <div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <span class="fw-bold">
-                                                            <%= isAnonymousPost ? '匿名用户' : (post.author_name || '未知用户' )
-                                                                %>
-                                                        </span>
-                                                        <% if (!isAnonymousPost && post.author_name) { %>
-                                                            <span class="anon-id anon-id-poster">楼主</span>
-                                                            <% } %>
-                                                    </div>
-                                                    <small class="text-muted">
-                                                        <%= moment(post.created_at).format('MM-DD HH:mm') %>
-                                                    </small>
-                                                </div>
+                                                <small class="text-muted">
+                                                    <%= moment(post.created_at).format('MM-DD HH:mm') %>
+                                                </small>
                                             </div>
                                         </div>
                                     </div>
@@ -234,7 +201,7 @@
                                         </p>
                                     </div>
 
-                                    <% if(post.image) { %>
+                                    <% if (post.image) { %>
                                         <div class="px-3 pb-3">
                                             <img src="<%= post.image %>" class="img-fluid rounded w-100"
                                                 style="max-height: 500px; object-fit: cover; cursor: pointer;"
@@ -246,7 +213,6 @@
                                             <div
                                                 class="bg-light bg-opacity-50 px-3 py-2 d-flex justify-content-between align-items-center border-top border-light">
                                                 <div class="d-flex align-items-center gap-3">
-                                                    <!-- AJAX 点赞按钮 -->
                                                     <button type="button"
                                                         class="like-btn text-danger <%= post.userLiked ? 'liked' : '' %>"
                                                         data-post-id="<%= post.id %>" onclick="toggleLike(this)">
@@ -255,45 +221,39 @@
                                                             <%= post.likes %>
                                                         </span>
                                                     </button>
-                                                    <span class="text-muted small">
-                                                        <i class="far fa-comment"></i>
+                                                    <span class="text-muted small"><i class="far fa-comment"></i>
                                                         <%= post.comments.length %>
                                                     </span>
                                                 </div>
                                                 <form action="/post/<%= post.id %>/report" method="POST"
                                                     class="d-inline">
                                                     <button type="submit"
-                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none small">
-                                                        <i class="fas fa-flag"></i> 举报
-                                                    </button>
+                                                        class="btn btn-sm btn-link text-muted p-0 text-decoration-none small"><i
+                                                            class="fas fa-flag"></i> 举报</button>
                                                 </form>
                                             </div>
 
                                             <!-- 评论区 -->
-                                            <% if(post.comments.length> 0) { %>
+                                            <% if (post.comments.length> 0) { %>
                                                 <div class="p-3 bg-white bg-opacity-50 border-top border-light">
-                                                    <div class="small text-muted mb-2">
-                                                        <i class="fas fa-comments me-1"></i>评论 (<%= post.comments.length
-                                                            %>)
-                                                    </div>
-                                                    <% post.comments.forEach((c, index)=> {
-                                                        const isOP = c.user_id && c.user_id === posterUserId;
-                                                        const displayName = isOP ? '楼主' : getAnonName(c.user_id);
-                                                        %>
+                                                    <div class="small text-muted mb-2"><i
+                                                            class="fas fa-comments me-1"></i>评论 (<%=
+                                                            post.comments.length %>)</div>
+                                                    <% post.comments.forEach(function(c) { var isOP=c.user_id &&
+                                                        c.user_id===posterUserId; var displayName=isOP ? '楼主' :
+                                                        getAnonName(c.user_id); %>
                                                         <div class="comment-item">
                                                             <div class="d-flex align-items-start gap-2">
                                                                 <span
                                                                     class="anon-id <%= isOP ? 'anon-id-poster' : 'anon-id-commenter' %>">
                                                                     <%= displayName %>
                                                                 </span>
-                                                                <div class="flex-grow-1">
-                                                                    <span class="small">
+                                                                <div class="flex-grow-1"><span class="small">
                                                                         <%= c.content %>
-                                                                    </span>
-                                                                </div>
+                                                                    </span></div>
                                                             </div>
                                                         </div>
-                                                        <% }) %>
+                                                        <% }); %>
                                                 </div>
                                                 <% } %>
 
@@ -304,39 +264,29 @@
                                                             <input type="text" name="commentContent"
                                                                 class="form-control form-control-sm border-0 bg-light"
                                                                 placeholder="写下你的评论..." required>
-                                                            <button class="btn btn-sm btn-success px-3" type="submit">
-                                                                <i class="fas fa-paper-plane"></i>
-                                                            </button>
+                                                            <button class="btn btn-sm btn-success px-3" type="submit"><i
+                                                                    class="fas fa-paper-plane"></i></button>
                                                         </form>
                                                     </div>
                                 </div>
-                                <% }) %>
+                                <% }); %>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
     <script>
-        // AJAX 点赞（无刷新）
         async function toggleLike(btn) {
-            const postId = btn.dataset.postId;
-
+            var postId = btn.dataset.postId;
             try {
-                const response = await fetch(`/post/${postId}/like`, {
+                var response = await fetch('/post/' + postId + '/like', {
                     method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'
-                    }
+                    headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' }
                 });
-
-                const data = await response.json();
-
+                var data = await response.json();
                 if (data.success) {
-                    // 更新按钮状态
-                    const icon = btn.querySelector('i');
-                    const count = btn.querySelector('.like-count');
-
+                    var icon = btn.querySelector('i');
+                    var count = btn.querySelector('.like-count');
                     if (data.liked) {
                         btn.classList.add('liked');
                         icon.classList.remove('far');
@@ -346,12 +296,9 @@
                         icon.classList.remove('fas');
                         icon.classList.add('far');
                     }
-
                     count.textContent = data.count;
-
-                    // 添加动画效果
                     btn.style.transform = 'scale(1.2)';
-                    setTimeout(() => btn.style.transform = '', 200);
+                    setTimeout(function () { btn.style.transform = ''; }, 200);
                 }
             } catch (err) {
                 console.error('点赞失败:', err);
