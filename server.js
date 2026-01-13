@@ -381,6 +381,13 @@ app.get('/class/:id', requireAuth, async (req, res) => {
                 ORDER BY c.created_at ASC
             `, [post.id]);
             post.comments = comments;
+
+            // 检查当前用户是否已点赞
+            const [likeCheck] = await db.query(
+                'SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?',
+                [post.id, req.session.userId]
+            );
+            post.userLiked = likeCheck.length > 0;
         }
 
         res.render('class', { currentClass, posts, moment });
@@ -390,18 +397,22 @@ app.get('/class/:id', requireAuth, async (req, res) => {
     }
 });
 
-// 发布帖子（关联用户）
+// 发布帖子（支持匿名）
 app.post('/class/:id/post', requireAuth, upload.single('image'), async (req, res) => {
     try {
         const classId = req.params.id;
         const content = req.body.content;
         const userId = req.session.userId;
+        const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
         let image = '';
         if (req.file) {
             image = '/uploads/' + req.file.filename;
         }
 
-        await db.query('INSERT INTO posts (class_id, user_id, content, image) VALUES (?, ?, ?, ?)', [classId, userId, content, image]);
+        await db.query(
+            'INSERT INTO posts (class_id, user_id, content, image, is_anonymous) VALUES (?, ?, ?, ?, ?)',
+            [classId, userId, content, image, isAnonymous]
+        );
         res.redirect(`/class/${classId}`);
     } catch (err) {
         console.log(err);
@@ -409,19 +420,51 @@ app.post('/class/:id/post', requireAuth, upload.single('image'), async (req, res
     }
 });
 
-// 点赞
+// 点赞（AJAX，防止重复）
 app.post('/post/:id/like', requireAuth, async (req, res) => {
     try {
-        await db.query('UPDATE posts SET likes = likes + 1 WHERE id = ?', [req.params.id]);
+        const postId = req.params.id;
+        const userId = req.session.userId;
 
-        const [rows] = await db.query('SELECT class_id FROM posts WHERE id = ?', [req.params.id]);
-        if (rows.length > 0) {
-            res.redirect(`/class/${rows[0].class_id}`);
+        // 检查是否已点赞
+        const [existing] = await db.query(
+            'SELECT id FROM post_likes WHERE post_id = ? AND user_id = ?',
+            [postId, userId]
+        );
+
+        let liked = false;
+        let newCount = 0;
+
+        if (existing.length === 0) {
+            // 添加点赞
+            await db.query('INSERT INTO post_likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
+            await db.query('UPDATE posts SET likes = likes + 1 WHERE id = ?', [postId]);
+            liked = true;
         } else {
-            res.redirect('/hall');
+            // 取消点赞
+            await db.query('DELETE FROM post_likes WHERE post_id = ? AND user_id = ?', [postId, userId]);
+            await db.query('UPDATE posts SET likes = GREATEST(likes - 1, 0) WHERE id = ?', [postId]);
+            liked = false;
+        }
+
+        // 获取最新点赞数
+        const [post] = await db.query('SELECT likes FROM posts WHERE id = ?', [postId]);
+        newCount = post.length > 0 ? post[0].likes : 0;
+
+        // 返回 JSON（AJAX 请求）或重定向（普通表单）
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            res.json({ success: true, liked, count: newCount });
+        } else {
+            const [rows] = await db.query('SELECT class_id FROM posts WHERE id = ?', [postId]);
+            res.redirect(`/class/${rows[0].class_id}`);
         }
     } catch (err) {
-        res.send("操作失败");
+        console.error('点赞失败:', err);
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            res.status(500).json({ success: false, error: '操作失败' });
+        } else {
+            res.send("操作失败");
+        }
     }
 });
 

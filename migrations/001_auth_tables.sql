@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS invite_codes (
 ALTER TABLE posts ADD COLUMN user_id INT AFTER class_id;
 ALTER TABLE posts ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
 
+-- 添加匿名发帖标记
+ALTER TABLE posts ADD COLUMN is_anonymous TINYINT(1) DEFAULT 0;
+
 -- 修改 comments 表添加 user_id 字段（如果不存在则执行）
 ALTER TABLE comments ADD COLUMN user_id INT AFTER post_id;
 ALTER TABLE comments ADD FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL;
@@ -54,4 +57,15 @@ CREATE TABLE IF NOT EXISTS reports (
     resolved_at TIMESTAMP NULL,
     FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
     FOREIGN KEY (reporter_id) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- 点赞记录表（防止重复点赞）
+CREATE TABLE IF NOT EXISTS post_likes (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    post_id INT NOT NULL,
+    user_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_like (post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
