@@ -42,7 +42,15 @@ app.use(async (req, res, next) => {
 
 // 登录验证中间件
 function requireAuth(req, res, next) {
-    if (!req.session.userId) {
+    // 增加 !res.locals.user 判断：
+    // 如果 Session 里有 ID，但在数据库没查到人（res.locals.user 为空），也视为未登录
+    if (!req.session.userId || !res.locals.user) {
+        
+        // 如果 Session 还在但人没了，顺便把 Session 销毁掉，免得死循环
+        if (req.session) {
+            req.session.destroy();
+        }
+        
         return res.redirect('/login');
     }
     next();
