@@ -7,8 +7,8 @@
     <title>
         <%= currentClass.full_name %> - 回忆录
     </title>
-    <link href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdn.bootcdn.net/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/ajax/libs/twitter-bootstrap/5.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.staticfile.org/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <style>
         body {
@@ -196,9 +196,7 @@
 
                                     <!-- 帖子内容 -->
                                     <div class="p-3">
-                                        <p class="card-text mb-0" style="white-space: pre-wrap; line-height: 1.7;">
-                                            <%= post.content %>
-                                        </p>
+                                        <p class="card-text mb-0" style="white-space: pre-wrap; line-height: 1.7;"><%= post.content %></p>
                                     </div>
 
                                     <% if (post.image) { %>
@@ -274,7 +272,7 @@
         </div>
     </div>
 
-    <script src="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.staticfile.org/ajax/libs/twitter-bootstrap/5.3.1/js/bootstrap.bundle.min.js"></script>
     <script>
         async function toggleLike(btn) {
             var postId = btn.dataset.postId;
