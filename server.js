@@ -19,6 +19,7 @@ app.use('/lib/bootstrap', express.static(path.join(__dirname, 'node_modules/boot
 app.use('/lib/fontawesome', express.static(path.join(__dirname, 'node_modules/@fortawesome/fontawesome-free')));
 // --------------------------------------------------------
 
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // 配置 Session（Cookie 保持登录30天）
@@ -51,12 +52,12 @@ function requireAuth(req, res, next) {
     // 增加 !res.locals.user 判断：
     // 如果 Session 里有 ID，但在数据库没查到人（res.locals.user 为空），也视为未登录
     if (!req.session.userId || !res.locals.user) {
-        
+
         // 如果 Session 还在但人没了，顺便把 Session 销毁掉，免得死循环
         if (req.session) {
             req.session.destroy();
         }
-        
+
         return res.redirect('/login');
     }
     next();
@@ -98,6 +99,99 @@ const upload = multer({ storage: storage });
 // 生产环境需要单独挂载 uploads 目录的静态服务
 if (process.env.NODE_ENV === 'production') {
     app.use('/uploads', express.static(UPLOADS_DIR));
+}
+
+// ============================
+// 树洞匿名ID系统
+// ============================
+
+// 加载名字列表
+let anonymousNames = [];
+try {
+    const namesPath = path.join(__dirname, 'public/data/names.txt');
+    const namesContent = fs.readFileSync(namesPath, 'utf-8');
+    anonymousNames = namesContent.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+    console.log(`加载了 ${anonymousNames.length} 个匿名名字`);
+} catch (err) {
+    console.error('加载名字列表失败:', err);
+    // 降级使用默认名字列表
+    anonymousNames = ['Alex', 'Blake', 'Casey', 'Drew', 'Eden', 'Finn', 'Gray', 'Harper', 'Ivy', 'Jordan'];
+}
+
+// 生成确定性的匿名名字（同一帖子+同一用户始终返回相同名字）
+function getAnonymousName(postId, userId, usedNames = new Set()) {
+    // 使用帖子ID和用户ID生成确定性种子
+    const seed = postId * 10007 + userId * 31;
+    let index = Math.abs(seed) % anonymousNames.length;
+    let name = anonymousNames[index];
+
+    // 如果名字已被使用，线性探测找下一个可用的
+    let attempts = 0;
+    while (usedNames.has(name) && attempts < anonymousNames.length) {
+        index = (index + 1) % anonymousNames.length;
+        name = anonymousNames[index];
+        attempts++;
+    }
+
+    return name;
+}
+
+// 为帖子中的所有用户生成唯一的匿名名字映射
+function buildAnonymousNameMap(postId, postUserId, replies) {
+    const userNameMap = {};
+    const usedNames = new Set();
+
+    // 收集所有参与的用户ID（包括帖主）
+    const allUserIds = new Set([postUserId]);
+    for (const reply of replies) {
+        if (reply.user_id) {
+            allUserIds.add(reply.user_id);
+        }
+    }
+
+    // 为每个用户分配唯一名字（帖主优先）
+    for (const userId of allUserIds) {
+        const name = getAnonymousName(postId, userId, usedNames);
+        userNameMap[userId] = name;
+        usedNames.add(name);
+    }
+
+    return userNameMap;
+}
+
+// 解析引用格式 #ID（全局ID，支持跨帖引用）
+async function parseQuotes(content, currentPostId) {
+    const quotePattern = /#(\d+)/g;
+    const quotes = [];
+    let match;
+
+    while ((match = quotePattern.exec(content)) !== null) {
+        const messageId = parseInt(match[1], 10);
+        try {
+            // 在统一消息表中查找
+            const [msgResults] = await db.query(
+                'SELECT id, parent_id, content FROM treehole_messages WHERE id = ?',
+                [messageId]
+            );
+            if (msgResults.length > 0) {
+                const quotedMsg = msgResults[0];
+                // 判断是否同帖：如果是主帖(parent_id=null)则看id，如果是回复则看parent_id
+                const targetPostId = quotedMsg.parent_id || quotedMsg.id;
+                quotes.push({
+                    id: messageId,
+                    content: quotedMsg.content.length > 80
+                        ? quotedMsg.content.substring(0, 80) + '...'
+                        : quotedMsg.content,
+                    isSameThread: targetPostId == currentPostId,
+                    targetPostId: targetPostId
+                });
+            }
+        } catch (err) {
+            console.error('解析引用失败:', err);
+        }
+    }
+
+    return quotes;
 }
 
 // --- 认证路由 ---
@@ -244,15 +338,39 @@ async function getAdminData() {
     }
 
     // 获取举报列表（表可能不存在）
+    // 获取举报列表（合并 班级圈 和 树洞）
     try {
-        const [rows] = await db.query(`
-            SELECT r.*, p.content as post_content, p.class_id, u.username as reporter_name
+        // 1. 班级圈举报
+        const [classReports] = await db.query(`
+            SELECT r.id, r.post_id, r.reporter_id, r.reason, r.status, r.created_at, 
+                   p.content as post_content, p.class_id, u.username as reporter_name,
+                   'class' as type
             FROM reports r
             LEFT JOIN posts p ON r.post_id = p.id
             LEFT JOIN users u ON r.reporter_id = u.id
             ORDER BY r.created_at DESC
         `);
-        reports = rows;
+
+        // 2. 树洞举报
+        let treeholeReports = [];
+        try {
+            const [trRows] = await db.query(`
+                SELECT tr.id, tr.message_id as post_id, tr.reporter_id, tr.reason, tr.status, tr.created_at, 
+                       tm.content as post_content, 0 as class_id, u.username as reporter_name,
+                       'treehole' as type
+                FROM treehole_reports tr
+                LEFT JOIN treehole_messages tm ON tr.message_id = tm.id
+                LEFT JOIN users u ON tr.reporter_id = u.id
+                ORDER BY tr.created_at DESC
+            `);
+            treeholeReports = trRows;
+        } catch (e) {
+            // 表可能不存在，忽略
+        }
+
+        // 合并并按时间排序
+        reports = [...classReports, ...treeholeReports].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
     } catch (err) {
         console.error('获取举报列表失败:', err.message);
     }
@@ -351,6 +469,42 @@ app.post('/admin/report/:id/dismiss', requireAuth, requireAdmin, async (req, res
         res.redirect('/admin');
     } catch (err) {
         console.error('驳回举报失败:', err);
+        res.redirect('/admin');
+    }
+});
+
+// 处理树洞举报 - 删除帖子/回复
+app.post('/admin/report/treehole/:id/delete-post', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        const reportId = req.params.id;
+        const [reports] = await db.query('SELECT * FROM treehole_reports WHERE id = ?', [reportId]);
+
+        if (reports.length > 0) {
+            const messageId = reports[0].message_id;
+
+            // 删除树洞消息（及其子回复 - 需要根据具体外键策略，这里手动删除以防万一）
+            // 先删回复
+            await db.query('DELETE FROM treehole_messages WHERE parent_id = ?', [messageId]);
+            // 再删本体
+            await db.query('DELETE FROM treehole_messages WHERE id = ?', [messageId]);
+
+            // 更新举报状态
+            await db.query('UPDATE treehole_reports SET status = "resolved", resolved_at = NOW() WHERE id = ?', [reportId]);
+        }
+        res.redirect('/admin');
+    } catch (err) {
+        console.error('处理树洞举报失败:', err);
+        res.redirect('/admin');
+    }
+});
+
+// 处理树洞举报 - 驳回
+app.post('/admin/report/treehole/:id/dismiss', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        await db.query('UPDATE treehole_reports SET status = "dismissed", resolved_at = NOW() WHERE id = ?', [req.params.id]);
+        res.redirect('/admin');
+    } catch (err) {
+        console.error(err);
         res.redirect('/admin');
     }
 });
@@ -574,6 +728,281 @@ app.post('/post/:id/report', requireAuth, async (req, res) => {
         res.send("<script>alert('举报失败，请稍后重试。'); history.back();</script>");
     }
 });
+
+// ============================
+// 树洞（Tree Hole）路由
+// ============================
+
+// 树洞首页
+app.get('/treehole', requireAuth, async (req, res) => {
+    try {
+        // 查询主帖（parent_id IS NULL）
+        const [posts] = await db.query(`
+            SELECT id, content, image, likes, dislikes, reply_count, created_at
+            FROM treehole_messages
+            WHERE parent_id IS NULL
+            ORDER BY created_at DESC
+        `);
+
+        // 检查当前用户对每个帖子的交互状态
+        for (let post of posts) {
+            try {
+                const [reaction] = await db.query(
+                    'SELECT type FROM treehole_likes WHERE message_id = ? AND user_id = ?',
+                    [post.id, req.session.userId]
+                );
+                post.userAction = reaction.length > 0 ? reaction[0].type : null;
+            } catch (err) {
+                post.userAction = null;
+            }
+        }
+
+        res.render('treehole', { posts, moment });
+    } catch (err) {
+        console.error('加载树洞失败:', err);
+        res.status(500).send('加载失败');
+    }
+});
+
+// 新建帖子页面
+app.get('/treehole/new', requireAuth, (req, res) => {
+    res.render('treehole-new');
+});
+
+// 发布树洞帖子
+app.post('/treehole/post', requireAuth, upload.single('image'), async (req, res) => {
+    try {
+        const content = req.body.content?.trim();
+        const userId = req.session.userId;
+
+        if (!content) {
+            return res.redirect('/treehole/new');
+        }
+
+        let image = '';
+        if (req.file) {
+            image = '/uploads/' + req.file.filename;
+        }
+
+        // 发主帖 - parent_id 为 NULL
+        const [result] = await db.query(
+            'INSERT INTO treehole_messages (user_id, parent_id, content, image) VALUES (?, NULL, ?, ?)',
+            [userId, content, image]
+        );
+
+        // 跳转到新创建的帖子详情页
+        res.redirect(`/treehole/${result.insertId}`);
+    } catch (err) {
+        console.error('发布帖子失败:', err);
+        res.send("<script>alert('发布失败，请稍后重试'); history.back();</script>");
+    }
+});
+
+// 查看树洞帖子详情
+app.get('/treehole/:id', requireAuth, async (req, res) => {
+    try {
+        const postId = req.params.id;
+
+        // 处理 /treehole/new 路由冲突
+        if (postId === 'new') {
+            return res.render('treehole-new');
+        }
+
+        // 获取主帖 (增加 dislikes 字段)
+        const [posts] = await db.query(
+            'SELECT id, user_id, content, image, likes, dislikes, reply_count, created_at FROM treehole_messages WHERE id = ? AND parent_id IS NULL',
+            [postId]
+        );
+
+        if (posts.length === 0) {
+            return res.redirect('/treehole');
+        }
+
+        const post = posts[0];
+
+        // 检查主帖交互状态
+        try {
+            const [reaction] = await db.query(
+                'SELECT type FROM treehole_likes WHERE message_id = ? AND user_id = ?',
+                [postId, req.session.userId]
+            );
+            post.userAction = reaction.length > 0 ? reaction[0].type : null;
+        } catch (err) {
+            post.userAction = null;
+        }
+
+        // 获取回复列表（parent_id = 主帖ID）
+        const [replies] = await db.query(`
+            SELECT id, user_id, parent_id, content, image, created_at, likes, dislikes
+            FROM treehole_messages
+            WHERE parent_id = ?
+            ORDER BY id ASC
+        `, [postId]);
+
+        // 构建匿名名字映射
+        const anonymousNameMap = buildAnonymousNameMap(post.id, post.user_id, replies);
+
+        // 为帖主分配名字
+        post.anonymousName = anonymousNameMap[post.user_id];
+
+        // 批量查询所有回复的点赞状态以减少数据库查询次数（略过复杂，这里用循环简单实现）
+        // 为每条回复分配匿名名字并解析引用（使用全局ID）
+        for (const reply of replies) {
+            reply.anonymousName = anonymousNameMap[reply.user_id];
+            reply.isOP = reply.user_id === post.user_id; // 是否为洞主
+            reply.quotes = await parseQuotes(reply.content, postId);
+
+            // 查询回复的交互状态
+            try {
+                const [rReaction] = await db.query(
+                    'SELECT type FROM treehole_likes WHERE message_id = ? AND user_id = ?',
+                    [reply.id, req.session.userId]
+                );
+                reply.userAction = rReaction.length > 0 ? rReaction[0].type : null;
+            } catch {
+                reply.userAction = null;
+            }
+        }
+
+        res.render('treehole-post', { post, replies, moment, postUserId: post.user_id });
+    } catch (err) {
+        console.error('加载帖子详情失败:', err);
+        res.status(500).send('加载失败');
+    }
+});
+
+// 回复树洞帖子
+app.post('/treehole/:id/reply', requireAuth, upload.single('image'), async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const content = req.body.content?.trim();
+        const userId = req.session.userId;
+
+        if (!content) {
+            return res.redirect(`/treehole/${postId}`);
+        }
+
+        let image = '';
+        if (req.file) {
+            image = '/uploads/' + req.file.filename;
+        }
+
+        // 插入回复 - parent_id 为主帖ID，使用自增ID作为全局唯一标识
+        await db.query(
+            'INSERT INTO treehole_messages (user_id, parent_id, content, image) VALUES (?, ?, ?, ?)',
+            [userId, postId, content, image]
+        );
+
+        // 更新主帖回复数
+        await db.query(
+            'UPDATE treehole_messages SET reply_count = reply_count + 1 WHERE id = ?',
+            [postId]
+        );
+
+        res.redirect(`/treehole/${postId}`);
+    } catch (err) {
+        console.error('回复失败:', err);
+        res.send("<script>alert('回复失败，请稍后重试'); history.back();</script>");
+    }
+});
+
+// 点赞树洞帖子（AJAX）
+// 树洞交互：点赞/点踩 (AJAX)
+app.post('/treehole/:id/react', requireAuth, async (req, res) => {
+    try {
+        const messageId = req.params.id;
+        const userId = req.session.userId;
+        const type = req.body.type; // 'like' 或 'dislike'
+
+        if (!['like', 'dislike'].includes(type)) {
+            return res.status(400).json({ success: false, error: '无效的操作类型' });
+        }
+
+        // 检查用户当前的交互状态
+        const [existing] = await db.query(
+            'SELECT id, type FROM treehole_likes WHERE message_id = ? AND user_id = ?',
+            [messageId, userId]
+        );
+
+        let currentUserAction = null; // null, 'like', 'dislike'
+
+        if (existing.length > 0) {
+            const currentType = existing[0].type;
+
+            if (currentType === type) {
+                // 如果是重复操作（如已赞点赞），则取消
+                await db.query('DELETE FROM treehole_likes WHERE id = ?', [existing[0].id]);
+                if (type === 'like') {
+                    await db.query('UPDATE treehole_messages SET likes = GREATEST(likes - 1, 0) WHERE id = ?', [messageId]);
+                } else {
+                    await db.query('UPDATE treehole_messages SET dislikes = GREATEST(dislikes - 1, 0) WHERE id = ?', [messageId]);
+                }
+                currentUserAction = null;
+            } else {
+                // 如果是反向操作（如已赞点踩），则更新类型并更新计数
+                await db.query('UPDATE treehole_likes SET type = ? WHERE id = ?', [type, existing[0].id]);
+                // 更新计数：旧类型-1，新类型+1
+                if (type === 'like') { // 从踩变赞
+                    await db.query('UPDATE treehole_messages SET dislikes = GREATEST(dislikes - 1, 0), likes = likes + 1 WHERE id = ?', [messageId]);
+                } else { // 从赞变踩
+                    await db.query('UPDATE treehole_messages SET likes = GREATEST(likes - 1, 0), dislikes = dislikes + 1 WHERE id = ?', [messageId]);
+                }
+                currentUserAction = type;
+            }
+        } else {
+            // 新操作
+            await db.query('INSERT INTO treehole_likes (message_id, user_id, type) VALUES (?, ?, ?)', [messageId, userId, type]);
+            if (type === 'like') {
+                await db.query('UPDATE treehole_messages SET likes = likes + 1 WHERE id = ?', [messageId]);
+            } else {
+                await db.query('UPDATE treehole_messages SET dislikes = dislikes + 1 WHERE id = ?', [messageId]);
+            }
+            currentUserAction = type;
+        }
+
+        // 获取最新计数
+        const [msg] = await db.query('SELECT likes, dislikes FROM treehole_messages WHERE id = ?', [messageId]);
+
+        res.json({
+            success: true,
+            likes: msg[0].likes,
+            dislikes: msg[0].dislikes,
+            userAction: currentUserAction
+        });
+
+    } catch (err) {
+        console.error('交互失败:', err);
+        res.status(500).json({ success: false, error: '操作失败' });
+    }
+});
+
+// 举报树洞帖子
+app.post('/treehole/:id/report', requireAuth, async (req, res) => {
+    try {
+        const messageId = req.params.id;
+        const reporterId = req.session.userId;
+        const reason = req.body.reason || '用户举报';
+
+        // 检查是否已举报
+        const [existing] = await db.query(
+            'SELECT id FROM treehole_reports WHERE message_id = ? AND reporter_id = ? AND status = "pending"',
+            [messageId, reporterId]
+        );
+
+        if (existing.length === 0) {
+            await db.query(
+                'INSERT INTO treehole_reports (message_id, reporter_id, reason) VALUES (?, ?, ?)',
+                [messageId, reporterId, reason]
+            );
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        console.error('举报失败:', err);
+        res.status(500).json({ success: false, error: '举报提交失败' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

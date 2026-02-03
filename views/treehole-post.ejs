@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>#<%= post.id %> - 树洞</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+</head>
+
+<body>
+    <!-- 顶部导航 -->
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/treehole" class="btn-warm-outline">
+                <i class="fas fa-arrow-left"></i>
+                <span>返回树洞</span>
+            </a>
+            <div class="nav-brand">
+                <div class="nav-brand-icon">
+                    <i class="fas fa-tree"></i>
+                </div>
+                <span class="nav-brand-text">树洞 #<%= post.id %></span>
+            </div>
+            <% if (user) { %>
+                <div class="dropdown">
+                    <button class="btn-warm-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i>
+                        <span class="d-none d-sm-inline">
+                            <%= user.username %>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><span class="dropdown-item-text fw-bold">
+                                <%= user.username %>
+                            </span></li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="/my-codes"><i
+                                    class="fas fa-gift me-2 text-warning"></i>我的邀请码</a></li>
+                        <li>
+                            <form action="/logout" method="POST">
+                                <button type="submit" class="dropdown-item text-danger">
+                                    <i class="fas fa-sign-out-alt me-2"></i>退出登录
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+                <% } else { %>
+                    <span></span>
+                    <% } %>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <!-- 主帖 -->
+                <div class="treehole-card post-detail-card">
+                    <div class="post-header">
+                        <div class="post-author">
+                            <div class="post-avatar op-avatar">
+                                <i class="fas fa-tree"></i>
+                            </div>
+                            <div class="post-author-info">
+                                <div class="post-author-name">
+                                    <span class="op-badge">洞主</span>
+                                    <span class="anonymous-name">
+                                        <%= post.anonymousName %>
+                                    </span>
+                                </div>
+                                <span class="post-time">
+                                    <%= moment(post.created_at).format('YYYY-MM-DD HH:mm') %>
+                                </span>
+                            </div>
+                        </div>
+                        <span class="hole-number">#<%= post.id %></span>
+                    </div>
+
+                    <div class="post-content">
+                        <p><%- post.content.replace(/\n/g, '<br>' ) %></p>
+                    </div>
+
+                    <% if (post.image) { %>
+                        <div class="post-image">
+                            <img src="<%= post.image %>" alt="帖子图片" onclick="openImage(this.src)">
+                        </div>
+                        <% } %>
+
+                            <div class="post-actions">
+                                <div class="action-btns">
+                                    <!-- 点赞按钮 -->
+                                    <button type="button"
+                                        class="action-btn <%= post.userAction === 'like' ? 'liked' : '' %>"
+                                        onclick="toggleReaction(this, 'like', <%= post.id %>)">
+                                        <i class="<%= post.userAction === 'like' ? 'fas' : 'far' %> fa-thumbs-up"></i>
+                                        <span class="count">
+                                            <%= post.likes %>
+                                        </span>
+                                    </button>
+
+                                    <!-- 点踩按钮 -->
+                                    <button type="button"
+                                        class="action-btn <%= post.userAction === 'dislike' ? 'disliked' : '' %>"
+                                        onclick="toggleReaction(this, 'dislike', <%= post.id %>)"
+                                        style="margin-left: 0.5rem;">
+                                        <i
+                                            class="<%= post.userAction === 'dislike' ? 'fas' : 'far' %> fa-thumbs-down"></i>
+                                        <span class="count">
+                                            <%= post.dislikes %>
+                                        </span>
+                                    </button>
+
+                                    <!-- 回复计数 -->
+                                    <span class="action-btn" style="cursor: default;">
+                                        <i class="far fa-comment"></i>
+                                        <span>
+                                            <%= replies.length %>
+                                        </span>
+                                    </span>
+                                </div>
+
+                                <!-- 更多菜单 -->
+                                <div class="dropdown">
+                                    <button class="more-btn" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-ellipsis-h"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item" href="javascript:void(0)"
+                                                onclick="copyId(<%= post.id %>)">
+                                                <i class="far fa-copy me-2"></i>复制层号
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item text-danger" href="javascript:void(0)"
+                                                onclick="reportPost(<%= post.id %>)">
+                                                <i class="far fa-flag me-2"></i>举报
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                </div>
+
+                <!-- 回复区 -->
+                <div class="replies-section">
+                    <div class="replies-header">
+                        <i class="fas fa-comments"></i>
+                        <span>回复 (<%= replies.length %>)</span>
+                    </div>
+
+                    <% if (replies.length===0) { %>
+                        <div class="treehole-card empty-replies">
+                            <p>还没有回复，快来抢沙发~</p>
+                        </div>
+                        <% } %>
+
+                            <% replies.forEach(function(reply) { %>
+                                <div class="treehole-card reply-card" id="reply-<%= reply.id %>">
+                                    <div class="reply-header">
+                                        <div class="reply-author">
+                                            <% if (reply.isOP) { %>
+                                                <span class="op-badge small">洞主</span>
+                                                <% } %>
+                                                    <span class="anonymous-name">
+                                                        <%= reply.anonymousName %>
+                                                    </span>
+                                        </div>
+                                        <div class="reply-meta">
+                                            <span class="global-id-badge">#<%= reply.id %></span>
+                                            <span class="reply-time">
+                                                <%= moment(reply.created_at).format('MM-DD HH:mm') %>
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <!-- 自动解析的引用（支持跨帖） -->
+                                    <% if (reply.quotes && reply.quotes.length> 0) { %>
+                                        <% reply.quotes.forEach(function(quote) { %>
+                                            <% if (quote.isSameThread) { %>
+                                                <div class="quote-block" data-id="<%= quote.id %>"
+                                                    onclick="scrollToReply(<%= quote.id %>)">
+                                                    <div class="quote-header">
+                                                        <i class="fas fa-quote-left"></i>
+                                                        <span>引用 #<%= quote.id %></span>
+                                                    </div>
+                                                    <div class="quote-content">
+                                                        <%= quote.content %>
+                                                    </div>
+                                                </div>
+                                                <% } else { %>
+                                                    <a href="/treehole/<%= quote.targetPostId %>#reply-<%= quote.id %>"
+                                                        class="quote-block cross-thread">
+                                                        <div class="quote-header">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                            <span>跨帖引用 #<%= quote.id %></span>
+                                                        </div>
+                                                        <div class="quote-content">
+                                                            <%= quote.content %>
+                                                        </div>
+                                                    </a>
+                                                    <% } %>
+                                                        <% }); %>
+                                                            <% } %>
+
+                                                                <div class="reply-content">
+                                                                    <p><%- reply.content.replace(/\n/g, '<br>' ) %></p>
+                                                                </div>
+
+                                                                <% if (reply.image) { %>
+                                                                    <div class="reply-image">
+                                                                        <img src="<%= reply.image %>" alt="回复图片"
+                                                                            onclick="openImage(this.src)">
+                                                                    </div>
+                                                                    <% } %>
+
+                                                                        <div
+                                                                            class="reply-actions d-flex justify-content-between align-items-center w-100 mt-2">
+                                                                            <div class="action-btns small">
+                                                                                <button type="button"
+                                                                                    class="action-btn <%= reply.userAction === 'like' ? 'liked' : '' %>"
+                                                                                    onclick="toggleReaction(this, 'like', <%= reply.id %>)">
+                                                                                    <i
+                                                                                        class="<%= reply.userAction === 'like' ? 'fas' : 'far' %> fa-thumbs-up"></i>
+                                                                                    <span class="count">
+                                                                                        <%= reply.likes || 0 %>
+                                                                                    </span>
+                                                                                </button>
+
+                                                                                <button type="button"
+                                                                                    class="action-btn <%= reply.userAction === 'dislike' ? 'disliked' : '' %>"
+                                                                                    onclick="toggleReaction(this, 'dislike', <%= reply.id %>)"
+                                                                                    style="margin-left: 0.5rem;">
+                                                                                    <i
+                                                                                        class="<%= reply.userAction === 'dislike' ? 'fas' : 'far' %> fa-thumbs-down"></i>
+                                                                                    <span class="count">
+                                                                                        <%= reply.dislikes || 0 %>
+                                                                                    </span>
+                                                                                </button>
+
+                                                                                <button type="button"
+                                                                                    class="reply-btn ms-3"
+                                                                                    onclick="replyToId(<%= reply.id %>)">
+                                                                                    <i class="fas fa-reply"></i>
+                                                                                    <span>回复</span>
+                                                                                </button>
+                                                                            </div>
+
+                                                                            <div class="dropdown">
+                                                                                <button class="more-btn small"
+                                                                                    type="button"
+                                                                                    data-bs-toggle="dropdown">
+                                                                                    <i class="fas fa-ellipsis-h"></i>
+                                                                                </button>
+                                                                                <ul
+                                                                                    class="dropdown-menu dropdown-menu-end">
+                                                                                    <li>
+                                                                                        <a class="dropdown-item"
+                                                                                            href="javascript:void(0)"
+                                                                                            onclick="copyId(<%= reply.id %>)">
+                                                                                            <i
+                                                                                                class="far fa-copy me-2"></i>复制层号
+                                                                                        </a>
+                                                                                    </li>
+                                                                                    <li>
+                                                                                        <a class="dropdown-item text-danger"
+                                                                                            href="javascript:void(0)"
+                                                                                            onclick="reportPost(<%= reply.id %>)">
+                                                                                            <i
+                                                                                                class="far fa-flag me-2"></i>举报
+                                                                                        </a>
+                                                                                    </li>
+                                                                                </ul>
+                                                                            </div>
+                                                                        </div>
+                                </div>
+                                <% }); %>
+                </div>
+
+                <!-- 回复表单 -->
+                <div class="treehole-card reply-form-card" id="reply-form">
+                    <div class="reply-form-title">
+                        <i class="fas fa-pen"></i>
+                        <span>发表回复</span>
+                    </div>
+
+                    <div class="quote-tip">
+                        <i class="fas fa-info-circle"></i>
+                        <span>使用 #ID 引用回复（支持跨帖），如 #123 #456</span>
+                    </div>
+
+                    <form action="/treehole/<%= post.id %>/reply" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <textarea name="content" id="replyContent" class="form-input-warm" rows="4"
+                                placeholder="写下你的回复..." required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <div class="file-upload-warm">
+                                <input type="file" name="image" id="replyImage" accept="image/*">
+                                <label for="replyImage">
+                                    <i class="fas fa-image"></i>
+                                    <span>上传图片 (可选)</span>
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-treehole w-100">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>发表回复</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 在新窗口打开图片
+        function openImage(src) {
+            var newWin = window.open("", "_blank");
+            if (newWin) {
+                newWin.document.write('<!DOCTYPE html><html style="height:100%; margin:0;"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>图片查看</title><style>body{margin:0;padding:0;height:100vh;background:#000;display:flex;justify-content:center;align-items:center;}img{max-width:100%;max-height:100%;object-fit:contain;}</style></head><body><img src="' + src + '" alt="图片"></body></html>');
+                newWin.document.close();
+            } else {
+                window.location.href = src;
+            }
+        }
+
+
+        // 树洞交互功能：点赞/点踩
+        async function toggleReaction(btn, type, messageId) {
+            try {
+                const response = await fetch('/treehole/' + messageId + '/react', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const container = btn.closest('.action-btns');
+                    const likeBtn = container.children[0];
+                    const dislikeBtn = container.children[1];
+
+                    // 更新计数
+                    likeBtn.querySelector('.count').textContent = data.likes;
+                    dislikeBtn.querySelector('.count').textContent = data.dislikes;
+
+                    // 更新样式状态
+                    // 重置
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('i').classList.replace('fas', 'far');
+                    dislikeBtn.classList.remove('disliked');
+                    dislikeBtn.querySelector('i').classList.replace('fas', 'far');
+
+                    // 应用新状态
+                    if (data.userAction === 'like') {
+                        likeBtn.classList.add('liked');
+                        likeBtn.querySelector('i').classList.replace('far', 'fas');
+                    } else if (data.userAction === 'dislike') {
+                        dislikeBtn.classList.add('disliked');
+                        dislikeBtn.querySelector('i').classList.replace('far', 'fas');
+                    }
+
+                    // 动画效果
+                    btn.style.transform = 'scale(1.2)';
+                    setTimeout(() => { btn.style.transform = ''; }, 200);
+                } else {
+                    alert(data.error || '操作失败');
+                }
+            } catch (err) {
+                console.error('交互失败:', err);
+                alert('网络错误，请稍后重试');
+            }
+        }
+
+        // 复制ID
+        function copyId(id) {
+            const text = '#' + id;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('已复制: ' + text);
+                }).catch(() => {
+                    prompt('请手动复制:', text);
+                });
+            } else {
+                prompt('请手动复制:', text);
+            }
+        }
+
+        // 举报帖子
+        async function reportPost(id) {
+            if (confirm('确定要举报这条内容吗？')) {
+                try {
+                    const response = await fetch('/treehole/' + id + '/report', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason: '用户举报' })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('举报已提交，管理员将尽快处理。');
+                    } else {
+                        alert(data.error || '举报失败');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('网络错误，请稍后重试');
+                }
+            }
+        }
+
+        // 回复某ID - 自动插入引用格式
+        function replyToId(replyId) {
+            var textarea = document.getElementById('replyContent');
+            var currentContent = textarea.value;
+            var quoteTag = '#' + replyId + ' ';
+
+            if (!currentContent.startsWith(quoteTag)) {
+                textarea.value = quoteTag + currentContent;
+            }
+
+            document.getElementById('reply-form').scrollIntoView({ behavior: 'smooth' });
+            setTimeout(function () {
+                textarea.focus();
+                textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+            }, 300);
+        }
+
+        // 滚动到指定回复
+        function scrollToReply(replyId) {
+            var replyElement = document.getElementById('reply-' + replyId);
+            if (replyElement) {
+                replyElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                replyElement.classList.add('highlight');
+                setTimeout(function () {
+                    replyElement.classList.remove('highlight');
+                }, 2000);
+            }
+        }
+
+        // 页面加载时检查URL hash
+        window.addEventListener('load', function () {
+            if (window.location.hash) {
+                var hash = window.location.hash.substring(1);
+                var element = document.getElementById(hash);
+                if (element) {
+                    setTimeout(function () {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        element.classList.add('highlight');
+                        setTimeout(function () {
+                            element.classList.remove('highlight');
+                        }, 2000);
+                    }, 500);
+                }
+            }
+        });
+
+        // 显示选中的文件名
+        document.getElementById('replyImage').addEventListener('change', function (e) {
+            var fileName = e.target.files[0] ? e.target.files[0].name : '上传图片 (可选)';
+            this.nextElementSibling.querySelector('span').textContent = fileName;
+        });
+
+        // 解决下拉菜单被遮挡问题：当菜单打开时提高卡片层级
+        document.addEventListener('show.bs.dropdown', function (e) {
+            const card = e.target.closest('.treehole-card');
+            if (card) {
+                card.classList.add('z-active');
+            }
+        });
+
+        document.addEventListener('hide.bs.dropdown', function (e) {
+            const card = e.target.closest('.treehole-card');
+            if (card) {
+                card.classList.remove('z-active');
+            }
+        });
+    </script>
+
+    <style>
+        /* 匿名名字样式 */
+        .anonymous-name {
+            font-weight: 600;
+            color: var(--forest);
+        }
+
+        .op-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            background: var(--forest);
+            color: white;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border-radius: 4px;
+            margin-right: 0.5rem;
+        }
+
+        .op-badge.small {
+            padding: 0.1rem 0.375rem;
+            font-size: 0.625rem;
+        }
+
+        .op-avatar {
+            background: var(--forest) !important;
+        }
+
+        .reply-author {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .reply-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        /* 全局ID徽章 */
+        .global-id-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            background: linear-gradient(135deg, #228B22, #32CD32);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        /* 引用提示 */
+        .quote-tip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: rgba(34, 139, 34, 0.08);
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .quote-tip i {
+            color: var(--forest);
+        }
+
+        /* 引用块可点击 */
+        .quote-block {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .quote-block:hover {
+            background: rgba(104, 159, 56, 0.15);
+        }
+
+        /* 跨帖引用样式 */
+        .quote-block.cross-thread {
+            display: block;
+            text-decoration: none;
+            border-left: 3px solid #f59e0b;
+        }
+
+        .quote-block.cross-thread .quote-header {
+            color: #d97706;
+        }
+
+        .quote-block.cross-thread:hover {
+            background: rgba(245, 158, 11, 0.1);
+        }
+
+        /* 回复按钮 */
+        .reply-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 0.75rem;
+            background: transparent;
+            border: 1px solid var(--forest-light);
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--forest);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .reply-btn:hover {
+            background: var(--forest-light);
+            color: var(--forest-dark);
+        }
+
+        /* 高亮闪烁效果 */
+        .reply-card.highlight {
+            animation: highlightFlash 0.5s ease-in-out 2;
+        }
+
+
+        /* 评论区小号按钮 */
+        .action-btns.small .action-btn {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.5rem;
+        }
+
+        .action-btns.small .reply-btn {
+            font-size: 0.8rem;
+            padding: 0.2rem 0.6rem;
+        }
+
+        /* 更多菜单按钮 */
+        .more-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            padding: 0.5rem;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .more-btn:hover,
+        .more-btn[aria-expanded="true"] {
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--forest);
+        }
+
+        .more-btn.small {
+            font-size: 0.9rem;
+            padding: 0.25rem;
+        }
+
+        @keyframes highlightFlash {
+
+            0%,
+            100% {
+                background: white;
+            }
+
+            50% {
+                background: rgba(34, 139, 34, 0.15);
+            }
+        }
+    </style>
+</body>
+
+</html>
