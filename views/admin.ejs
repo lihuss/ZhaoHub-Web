@@ -561,39 +561,70 @@
                                             <div class="d-flex justify-content-between align-items-start mb-2">
                                                 <div>
                                                     <span class="status-badge pending">待处理</span>
-                                                    <small class="text-muted ms-2">
-                                                        <%= new Date(report.created_at).toLocaleString('zh-CN') %>
-                                                    </small>
+                                                    <% if (report.type==='treehole' ) { %>
+                                                        <span class="badge bg-success ms-1"
+                                                            style="font-size: 0.7rem; vertical-align: middle;">树洞</span>
+                                                        <% } else { %>
+                                                            <span class="badge bg-primary ms-1"
+                                                                style="font-size: 0.7rem; vertical-align: middle;">班级圈</span>
+                                                            <% } %>
+                                                                <small class="text-muted ms-2">
+                                                                    <%= new
+                                                                        Date(report.created_at).toLocaleString('zh-CN')
+                                                                        %>
+                                                                </small>
                                                 </div>
                                                 <small class="text-muted">举报人: <%= report.reporter_name || '匿名' %>
-                                                        </small>
+                                                </small>
                                             </div>
                                             <div class="report-preview">
-                                                <strong>被举报帖子内容：</strong>
+                                                <strong>被举报<%= report.type==='treehole' ? '树洞信息' : '帖子内容' %>：</strong>
                                                 <p class="mb-0 mt-1">
                                                     <%= report.post_content ? report.post_content.substring(0, 200) +
-                                                        (report.post_content.length> 200 ? '...' : '') : '帖子已删除' %>
+                                                        (report.post_content.length> 200 ? '...' : '') : '内容已删除' %>
                                                 </p>
                                             </div>
                                             <div class="d-flex gap-2 mt-3">
-                                                <a href="/class/<%= report.class_id %>"
-                                                    class="btn btn-sm btn-outline-primary" target="_blank">
-                                                    <i class="fas fa-eye me-1"></i>查看帖子
-                                                </a>
-                                                <form action="/admin/report/<%= report.id %>/delete-post" method="POST"
-                                                    class="d-inline">
-                                                    <button type="submit" class="btn-warm red"
-                                                        style="font-size: 0.75rem; padding: 0.375rem 0.75rem;"
-                                                        onclick="return confirm('确定删除该帖子吗？')">
-                                                        <i class="fas fa-trash me-1"></i>删除帖子
-                                                    </button>
-                                                </form>
-                                                <form action="/admin/report/<%= report.id %>/dismiss" method="POST"
-                                                    class="d-inline">
-                                                    <button type="submit" class="btn btn-sm btn-outline-secondary">
-                                                        <i class="fas fa-times me-1"></i>驳回举报
-                                                    </button>
-                                                </form>
+                                                <% if (report.type==='treehole' ) { %>
+                                                    <a href="/treehole/<%= report.post_id %>"
+                                                        class="btn btn-sm btn-outline-primary" target="_blank">
+                                                        <i class="fas fa-eye me-1"></i>查看详情
+                                                    </a>
+                                                    <form action="/admin/report/treehole/<%= report.id %>/delete-post"
+                                                        method="POST" class="d-inline">
+                                                        <button type="submit" class="btn-warm red"
+                                                            style="font-size: 0.75rem; padding: 0.375rem 0.75rem;"
+                                                            onclick="return confirm('确定删除该树洞内容吗？')">
+                                                            <i class="fas fa-trash me-1"></i>删除内容
+                                                        </button>
+                                                    </form>
+                                                    <form action="/admin/report/treehole/<%= report.id %>/dismiss"
+                                                        method="POST" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                                            <i class="fas fa-times me-1"></i>驳回举报
+                                                        </button>
+                                                    </form>
+                                                    <% } else { %>
+                                                        <a href="/class/<%= report.class_id %>"
+                                                            class="btn btn-sm btn-outline-primary" target="_blank">
+                                                            <i class="fas fa-eye me-1"></i>查看帖子
+                                                        </a>
+                                                        <form action="/admin/report/<%= report.id %>/delete-post"
+                                                            method="POST" class="d-inline">
+                                                            <button type="submit" class="btn-warm red"
+                                                                style="font-size: 0.75rem; padding: 0.375rem 0.75rem;"
+                                                                onclick="return confirm('确定删除该帖子吗？')">
+                                                                <i class="fas fa-trash me-1"></i>删除帖子
+                                                            </button>
+                                                        </form>
+                                                        <form action="/admin/report/<%= report.id %>/dismiss"
+                                                            method="POST" class="d-inline">
+                                                            <button type="submit"
+                                                                class="btn btn-sm btn-outline-secondary">
+                                                                <i class="fas fa-times me-1"></i>驳回举报
+                                                            </button>
+                                                        </form>
+                                                        <% } %>
                                             </div>
                                         </div>
                                         <% }) %>
@@ -626,7 +657,15 @@
                                                             class="status-badge <%= r.status === 'resolved' ? 'resolved' : 'dismissed' %>">
                                                             <%= r.status==='resolved' ? '已处理' : '已驳回' %>
                                                         </span></td>
-                                                    <td>#<%= r.post_id %>
+                                                    <td>
+                                                        #<%= r.post_id %>
+                                                            <% if(r.type==='treehole' ) { %>
+                                                                <span class="badge bg-secondary"
+                                                                    style="zoom: 0.8;">树洞</span>
+                                                                <% } else { %>
+                                                                    <span class="badge bg-light text-dark"
+                                                                        style="zoom: 0.8;">班级</span>
+                                                                    <% } %>
                                                     </td>
                                                 </tr>
                                                 <% }) %>

@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布新帖 - 树洞</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+</head>
+
+<body>
+    <!-- 顶部导航 -->
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/treehole" class="btn-warm-outline">
+                <i class="fas fa-arrow-left"></i>
+                <span>返回树洞</span>
+            </a>
+            <div class="nav-brand">
+                <div class="nav-brand-icon">
+                    <i class="fas fa-tree"></i>
+                </div>
+                <span class="nav-brand-text">挖一个新洞</span>
+            </div>
+            <span></span>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-6 col-md-8">
+                <div class="treehole-card new-post-card">
+                    <div class="new-post-header">
+                        <div class="header-icon">🌳</div>
+                        <h2>说点什么吧</h2>
+                        <p>倾诉心声，匿名发布</p>
+                    </div>
+
+                    <form action="/treehole/post" method="POST" enctype="multipart/form-data" class="new-post-form">
+                        <div class="mb-4">
+                            <textarea name="content" class="form-input-warm large-textarea" rows="8"
+                                placeholder="在这里写下你想说的话..." required></textarea>
+                        </div>
+                        <div class="mb-4">
+                            <div class="file-upload-warm">
+                                <input type="file" name="image" id="imageUpload" accept="image/*">
+                                <label for="imageUpload">
+                                    <i class="fas fa-image"></i>
+                                    <span>添加图片 (可选)</span>
+                                </label>
+                            </div>
+                            <div id="image-preview" class="image-preview" style="display: none;">
+                                <img id="preview-img" src="" alt="预览">
+                                <button type="button" class="remove-image" onclick="removeImage()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn-treehole w-100">
+                            <i class="fas fa-paper-plane"></i>
+                            <span>发布到树洞</span>
+                        </button>
+                    </form>
+
+                    <div class="info-tip">
+                        <i class="fas fa-user-secret"></i>
+                        <span>所有发言均匿名，每个帖子内你会获得一个随机名字</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 图片预览
+        document.getElementById('imageUpload').addEventListener('change', function (e) {
+            var file = e.target.files[0];
+            if (file) {
+                var reader = new FileReader();
+                reader.onload = function (e) {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('image-preview').style.display = 'block';
+                    document.querySelector('.file-upload-warm label span').textContent = file.name;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function removeImage() {
+            document.getElementById('imageUpload').value = '';
+            document.getElementById('image-preview').style.display = 'none';
+            document.querySelector('.file-upload-warm label span').textContent = '添加图片 (可选)';
+        }
+    </script>
+
+    <style>
+        .new-post-card {
+            padding: 2rem;
+        }
+
+        .new-post-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .new-post-header .header-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .new-post-header h2 {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .new-post-header p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        .large-textarea {
+            min-height: 200px;
+            font-size: 1rem;
+            line-height: 1.75;
+        }
+
+        .image-preview {
+            margin-top: 1rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        .image-preview img {
+            max-width: 200px;
+            max-height: 150px;
+            border-radius: 0.75rem;
+            object-fit: cover;
+        }
+
+        .remove-image {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #ef4444;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+
+        .remove-image:hover {
+            background: #dc2626;
+        }
+    </style>
+</body>
+
+</html>

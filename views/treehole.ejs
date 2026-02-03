@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>树洞 - 肇中2025</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+</head>
+
+<body>
+    <!-- 顶部导航 -->
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <img src="/images/logo.png" alt="校徽">
+                <span class="nav-brand-text d-none d-md-inline">肇中2025</span>
+            </a>
+
+            <!-- Tab 切换 -->
+            <div class="nav-tabs-wrapper">
+                <a href="/hall" class="nav-tab">
+                    <i class="fas fa-book-open"></i>
+                    <span>回忆录</span>
+                </a>
+                <a href="/treehole" class="nav-tab active">
+                    <i class="fas fa-tree"></i>
+                    <span>树洞</span>
+                </a>
+            </div>
+
+            <% if (user) { %>
+                <div class="dropdown">
+                    <button class="btn-warm-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i>
+                        <span class="d-none d-sm-inline">
+                            <%= user.username %>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <span class="dropdown-item-text text-muted small">
+                                <%= user.campus %> · <%= user.school_type %> · <%= user.graduation_year %>届<br>
+                                            <%= user.class_name %>
+                            </span>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="/my-codes"><i class="fas fa-gift text-warning"></i> 我的邀请码</a>
+                        </li>
+                        <% if (user.is_admin) { %>
+                            <li><a class="dropdown-item" href="/admin"><i class="fas fa-cog text-danger"></i> 管理面板</a>
+                            </li>
+                            <% } %>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <form action="/logout" method="POST" class="d-inline">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="fas fa-sign-out-alt"></i> 退出登录
+                                        </button>
+                                    </form>
+                                </li>
+                    </ul>
+                </div>
+                <% } %>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- 头部区域 -->
+        <div class="treehole-header">
+            <div class="header-icon">🌳</div>
+            <h2>树洞</h2>
+            <p>匿名畅所欲言，倾诉心声</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <!-- 帖子流 -->
+            <div class="col-lg-8 col-md-10">
+                <% if (posts.length===0) { %>
+                    <div class="treehole-card empty-state">
+                        <i class="fas fa-tree"></i>
+                        <h5>树洞空空如也</h5>
+                        <p>快来挖第一个洞吧！</p>
+                        <a href="/treehole/new" class="btn-treehole"
+                            style="display: inline-flex; padding: 0.75rem 1.5rem;">
+                            <i class="fas fa-plus"></i>
+                            <span>挖一个新洞</span>
+                        </a>
+                    </div>
+                    <% } %>
+
+                        <% posts.forEach(function(post, index) { %>
+                            <div class="treehole-card post-card">
+                                <a href="/treehole/<%= post.id %>" class="post-link">
+                                    <!-- 帖子头部 -->
+                                    <div class="post-header">
+                                        <div class="post-author">
+                                            <div class="post-avatar">
+                                                <i class="fas fa-tree"></i>
+                                            </div>
+                                            <div class="post-author-info">
+                                                <div class="post-author-name">
+                                                    <span class="op-marker">🌳 洞主</span>
+                                                </div>
+                                                <span class="post-time">
+                                                    <%= moment(post.created_at).format('MM-DD HH:mm') %>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <span class="hole-number">#<%= post.id %></span>
+                                    </div>
+
+                                    <!-- 帖子内容 -->
+                                    <div class="post-content">
+                                        <p><%- post.content.length> 200 ? post.content.substring(0, 200).replace(/\n/g,
+                                                '<br>') + '...' : post.content.replace(/\n/g, '<br>') %></p>
+                                    </div>
+
+                                    <% if (post.image) { %>
+                                        <div class="post-image-preview">
+                                            <img src="<%= post.image %>" alt="帖子图片">
+                                        </div>
+                                        <% } %>
+                                </a>
+
+                                <!-- 操作栏 -->
+                                <div class="post-actions" onclick="event.preventDefault();">
+                                    <div class="action-btns">
+                                        <!-- 点赞 -->
+                                        <button type="button"
+                                            class="action-btn <%= post.userAction === 'like' ? 'liked' : '' %>"
+                                            onclick="toggleReaction(this, 'like', <%= post.id %>, event)">
+                                            <i
+                                                class="<%= post.userAction === 'like' ? 'fas' : 'far' %> fa-thumbs-up"></i>
+                                            <span class="count">
+                                                <%= post.likes %>
+                                            </span>
+                                        </button>
+
+                                        <!-- 点踩 -->
+                                        <button type="button"
+                                            class="action-btn <%= post.userAction === 'dislike' ? 'disliked' : '' %>"
+                                            onclick="toggleReaction(this, 'dislike', <%= post.id %>, event)"
+                                            style="margin-left: 0.5rem;">
+                                            <i
+                                                class="<%= post.userAction === 'dislike' ? 'fas' : 'far' %> fa-thumbs-down"></i>
+                                            <span class="count">
+                                                <%= post.dislikes || 0 %>
+                                            </span>
+                                        </button>
+
+                                        <a href="/treehole/<%= post.id %>" class="action-btn">
+                                            <i class="far fa-comment"></i>
+                                            <span>
+                                                <%= post.reply_count %>
+                                            </span>
+                                        </a>
+                                    </div>
+
+                                    <!-- 更多菜单 -->
+                                    <div class="dropdown">
+                                        <button class="more-btn" type="button" data-bs-toggle="dropdown"
+                                            onclick="event.stopPropagation()">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <a class="dropdown-item" href="javascript:void(0)"
+                                                    onclick="copyId(<%= post.id %>, event)">
+                                                    <i class="far fa-copy me-2"></i>复制层号
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="javascript:void(0)"
+                                                    onclick="reportPost(<%= post.id %>, event)">
+                                                    <i class="far fa-flag me-2"></i>举报
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <% }); %>
+            </div>
+        </div>
+    </div>
+
+    <!-- 悬浮发帖按钮 -->
+    <a href="/treehole/new" class="fab-new-post">
+        <i class="fas fa-plus"></i>
+        <span>发帖</span>
+    </a>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 阻止默认行为（用于防止点击内部按钮时触发外层链接跳转）
+        function stopProp(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // 树洞交互功能：点赞/点踩
+        async function toggleReaction(btn, type, messageId, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            try {
+                const response = await fetch('/treehole/' + messageId + '/react', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: type })
+                });
+                const data = await response.json();
+
+                if (data.success) {
+                    const container = btn.closest('.action-btns');
+                    const likeBtn = container.children[0];
+                    const dislikeBtn = container.children[1];
+
+                    // 更新计数
+                    likeBtn.querySelector('.count').textContent = data.likes;
+                    dislikeBtn.querySelector('.count').textContent = data.dislikes;
+
+                    // 更新样式状态
+                    likeBtn.classList.remove('liked');
+                    likeBtn.querySelector('i').classList.replace('fas', 'far');
+                    dislikeBtn.classList.remove('disliked');
+                    dislikeBtn.querySelector('i').classList.replace('fas', 'far');
+
+                    if (data.userAction === 'like') {
+                        likeBtn.classList.add('liked');
+                        likeBtn.querySelector('i').classList.replace('far', 'fas');
+                    } else if (data.userAction === 'dislike') {
+                        dislikeBtn.classList.add('disliked');
+                        dislikeBtn.querySelector('i').classList.replace('far', 'fas');
+                    }
+
+                    // 动画效果
+                    btn.style.transform = 'scale(1.2)';
+                    setTimeout(() => { btn.style.transform = ''; }, 200);
+                } else {
+                    alert(data.error || '操作失败');
+                }
+            } catch (err) {
+                console.error('交互失败:', err);
+            }
+        }
+
+        // 复制ID
+        function copyId(id, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            const text = '#' + id;
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('已复制: ' + text);
+                }).catch(() => {
+                    prompt('请手动复制:', text);
+                });
+            } else {
+                prompt('请手动复制:', text);
+            }
+        }
+
+        // 举报帖子
+        async function reportPost(id, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            if (confirm('确定要举报这条内容吗？')) {
+                try {
+                    const response = await fetch('/treehole/' + id + '/report', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ reason: '用户举报' })
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        alert('举报已提交，管理员将尽快处理。');
+                    } else {
+                        alert(data.error || '举报失败');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    alert('网络错误');
+                }
+            }
+        }
+
+        // 解决下拉菜单被遮挡问题：当菜单打开时提高卡片层级
+        document.addEventListener('show.bs.dropdown', function (e) {
+            const card = e.target.closest('.treehole-card');
+            if (card) {
+                card.classList.add('z-active');
+            }
+        });
+
+        document.addEventListener('hide.bs.dropdown', function (e) {
+            const card = e.target.closest('.treehole-card');
+            if (card) {
+                card.classList.remove('z-active');
+            }
+        });
+    </script>
+
+    <style>
+        /* 洞主标记 */
+        .op-marker {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.125rem 0.5rem;
+            background: linear-gradient(135deg, #228B22, #32CD32);
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 700;
+            border-radius: 4px;
+        }
+
+        /* 悬浮发帖按钮 */
+        .fab-new-post {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 1.5rem;
+            background: white;
+            color: #228B22;
+            text-decoration: none;
+            border-radius: 9999px;
+            font-weight: 700;
+            font-size: 1rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            border: 2px solid #228B22;
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .fab-new-post:hover {
+            background: #228B22;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(34, 139, 34, 0.4);
+        }
+
+        .fab-new-post i {
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .fab-new-post {
+                bottom: 6rem;
+                right: 1rem;
+                padding: 0.875rem 1.25rem;
+                font-size: 0.875rem;
+            }
+        }
+    </style>
+</body>
+
+</html>
