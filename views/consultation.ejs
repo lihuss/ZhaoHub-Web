@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>咨询专区 - 肇中2025</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+    <link rel="stylesheet" href="/css/image-grid.css">
+    <style>
+        :root {
+            --consultation-primary: #3b82f6;
+            --consultation-dark: #2563eb;
+            --consultation-light: #eff6ff;
+        }
+
+        .consultation-header::before {
+            background: linear-gradient(90deg, var(--consultation-dark), var(--consultation-primary), #60a5fa);
+        }
+
+        .btn-consultation {
+            background: linear-gradient(135deg, var(--consultation-primary), var(--consultation-dark));
+            color: white;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.25);
+            border: none;
+            border-radius: 1rem;
+            padding: 0.75rem 1.5rem;
+            font-weight: 700;
+        }
+
+        .btn-consultation:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.3);
+            color: white;
+        }
+
+        .nav-tab.active-consultation {
+            background: white;
+            color: var(--consultation-primary);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .header-icon-consultation {
+            width: 60px;
+            height: 60px;
+            font-size: 2.5rem;
+            background: var(--consultation-light);
+            color: var(--consultation-primary);
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .btn-consultation-float {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--consultation-primary), var(--consultation-dark));
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+            z-index: 1000;
+            transition: all 0.3s ease;
+            text-decoration: none;
+        }
+
+        .btn-consultation-float:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 顶部导航 -->
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <img src="/images/logo.png" alt="校徽">
+                <span class="nav-brand-text d-none d-md-inline">肇中2025</span>
+            </a>
+
+            <!-- Tab 切换 -->
+            <div class="nav-tabs-wrapper">
+                <a href="/treehole" class="nav-tab">
+                    <i class="fas fa-tree"></i>
+                    <span>树洞</span>
+                </a>
+                <a href="/consultation" class="nav-tab active-consultation">
+                    <i class="fas fa-question-circle"></i>
+                    <span>咨询专区</span>
+                </a>
+                <a href="/hall" class="nav-tab">
+                    <i class="fas fa-book-open"></i>
+                    <span>回忆录</span>
+                </a>
+            </div>
+
+            <% if (user) { %>
+                <div class="dropdown">
+                    <button class="btn-warm-outline dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i>
+                        <span class="d-none d-sm-inline">
+                            <%= user.username %>
+                        </span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <span class="dropdown-item-text text-muted small">
+                                <%= user.campus %> · <%= user.school_type %> · <%= user.graduation_year %>届<br>
+                                            <%= user.class_name %>
+                            </span>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/profile">
+                                <i class="fas fa-id-card me-2"></i>个人主页
+                            </a>
+                        </li>
+                        <% if (user.is_admin) { %>
+                            <li><a class="dropdown-item" href="/admin"><i class="fas fa-cog text-danger"></i> 管理面板</a>
+                            </li>
+                            <% } %>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li>
+                                    <form action="/logout" method="POST" class="d-inline">
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            <i class="fas fa-sign-out-alt"></i> 退出登录
+                                        </button>
+                                    </form>
+                                </li>
+                    </ul>
+                </div>
+                <% } %>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <!-- 头部区域 -->
+        <div class="treehole-header consultation-header">
+            <div class="header-icon-consultation"><i class="fas fa-comments"></i></div>
+            <h2>咨询专区</h2>
+            <p>求助问答，经验分享，互助成长</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <!-- 帖子流 -->
+            <div class="col-lg-8 col-md-10">
+                <!-- 悬浮提问按钮 -->
+                <a href="/consultation/new" class="btn-consultation-float" title="我要提问">
+                    <i class="fas fa-plus"></i>
+                </a>
+
+                <% if (posts.length===0) { %>
+                    <div class="treehole-card empty-state">
+                        <i class="fas fa-question-circle" style="color: #bfdbfe;"></i>
+                        <h5>暂无咨询</h5>
+                        <p>有什么问题，发布出来吧！</p>
+                    </div>
+                    <% } %>
+
+                    <% posts.forEach(function(post) { %>
+                        <div class="treehole-card post-card" style="padding: 20px;">
+                            <a href="/consultation/<%= post.id %>" class="post-link text-decoration-none">
+                                <!-- 帖子标题 -->
+                                <% if (post.title) { %>
+                                    <h5 class="fw-bold mb-2 text-dark" style="font-size: 1.35rem; line-height: 1.4;">
+                                        <% if (post.type === 'question') { %>
+                                            <span class="badge bg-primary me-1" style="font-size: 0.75rem; vertical-align: text-bottom; opacity: 0.8;">提问</span>
+                                        <% } else if (post.type === 'answer') { %>
+                                            <!-- 回答通常依附于问题，但这里作为独立卡片显示 -->
+                                        <% } else if (post.type === 'article') { %>
+                                            <span class="badge bg-info me-1" style="font-size: 0.75rem; vertical-align: text-bottom; opacity: 0.8;">文章</span>
+                                        <% } %>
+                                        <%= post.title %>
+                                    </h5>
+                                <% } %>
+
+                                <!-- 帖子内容布局 -->
+                                <% 
+                                    let images = [];
+                                    try {
+                                        if (post.image && post.image.trim().startsWith('[')) {
+                                            images = JSON.parse(post.image);
+                                        } else if (post.image) {
+                                            images = [post.image];
+                                        }
+                                    } catch (e) { images = [post.image]; }
+                                    let hasImage = images.length > 0 && images[0];
+                                %>
+                                
+                                <div class="d-flex mt-2">
+                                    <% if (hasImage) { %>
+                                        <div class="me-3" style="width: 190px; height: 105px; flex-shrink: 0; border-radius: 4px; overflow: hidden; background: #f6f6f6;">
+                                            <img src="<%= images[0] %>" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" class="hover-zoom">
+                                        </div>
+                                    <% } %>
+                                    
+                                    <div class="flex-grow-1">
+                                        <div class="text-secondary" style="font-size: 15px; line-height: 1.67; word-break: break-all;">
+                                            <% 
+                                                // 移除HTML标签并截取
+                                                let plainText = post.content.replace(/<[^>]+>/g, '');
+                                                let maxLength = hasImage ? 80 : 120;
+                                                let displayContent = plainText.length > maxLength ? plainText.substring(0, maxLength) + '...' : plainText;
+                                            %>
+                                            <span class="content-preview"><%= displayContent %></span>
+                                            <span class="text-primary ms-1" style="font-size: 14px; white-space: nowrap;">阅读全文 <i class="fas fa-angle-down"></i></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <!-- 操作栏 -->
+                            <div class="post-actions d-flex justify-content-between align-items-center mt-3 pt-2">
+                                <div class="action-left">
+                                    <form action="/consultation/<%= post.id %>/like" method="POST" class="d-inline like-form">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary border-0 rounded-1 px-2" style="<%= post.userLiked ? 'background: #eff6ff; color: #1d4ed8;' : 'background: #eff6ff; color: #1d4ed8;' %> font-weight: 500;">
+                                            <i class="<%= post.userLiked ? 'fas' : 'fas' %> fa-caret-up"></i>
+                                            <span class="ms-1"><%= post.likes > 0 ? '赞同 ' + post.likes : '赞同' %></span>
+                                        </button>
+                                    </form>
+    
+                                    <a href="/consultation/<%= post.id %>" class="btn btn-sm btn-link text-secondary text-decoration-none ms-3 p-0">
+                                        <i class="fas fa-comment me-1"></i>
+                                        <%= post.reply_count > 0 ? post.reply_count + ' 条评论' : '添加评论' %>
+                                    </a>
+
+                                    <!-- 显示时间 (这也是知乎风格，在底部) -->
+                                    <span class="text-muted ms-3 small">
+                                        <%= moment(post.created_at).format('MM-DD HH:mm') %>
+                                    </span>
+                                </div>
+                                <div class="action-right">
+                                    <form action="/consultation/<%= post.id %>/report" method="POST" class="d-inline" onsubmit="return confirm('确定要举报该内容吗？')">
+                                        <button type="submit" class="btn btn-sm btn-link text-muted p-0 border-0 text-decoration-none">
+                                            <i class="fas fa-flag"></i> 举报
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    <% }); %>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部 -->
+    <footer class="hall-footer">
+        <div class="container">
+            <p>© 2026 肇中2025届回忆录</p>
+        </div>
+    </footer>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.like-form').forEach(form => {
+                form.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const btn = this.querySelector('button');
+                    const icon = btn.querySelector('i');
+                    const countSpan = btn.querySelector('.count');
+
+                    try {
+                        const response = await fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            if (data.liked) {
+                                btn.classList.add('liked');
+                                btn.style.color = '#ef4444';
+                                icon.classList.remove('far');
+                                icon.classList.add('fas');
+                            } else {
+                                btn.classList.remove('liked');
+                                btn.style.color = '';
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                            }
+                            countSpan.textContent = data.count;
+                        }
+                    } catch (err) {
+                        console.error('点赞失败', err);
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

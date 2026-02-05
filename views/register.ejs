@@ -158,10 +158,9 @@
                                 <div class="form-floating">
                                     <select class="form-select" id="graduationYear" name="graduationYear" required>
                                         <option value="">请选择</option>
-                                        <option value="2025" selected>2025届</option>
-                                        <option value="2024">2024届</option>
-                                        <option value="2023">2023届</option>
-                                        <option value="2026">2026届</option>
+                                        <% for(let year = 2030; year >= 2010; year--) { %>
+                                            <option value="<%= year %>" <%= (typeof formData !== 'undefined' && formData.graduationYear == year) ? 'selected' : '' %>><%= year %>届</option>
+                                        <% } %>
                                     </select>
                                     <label for="graduationYear">届</label>
                                 </div>

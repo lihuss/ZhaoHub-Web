@@ -397,14 +397,16 @@ body {
 }
 
 .post-content {
-    padding: 1rem 1.25rem;
+    padding: 1.25rem 1.5rem; /* 增加内边距 */
 }
 
 .post-content p {
     white-space: pre-wrap;
-    line-height: 1.75;
-    color: var(--text-primary);
+    line-height: 1.8; /* 增加行高 */
+    font-size: 1.05rem; /* 字号微调大 */
+    color: #334155;
     margin: 0;
+    letter-spacing: 0.01em;
 }
 
 .post-image,

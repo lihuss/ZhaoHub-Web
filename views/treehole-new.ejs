@@ -44,19 +44,19 @@
                                 placeholder="在这里写下你想说的话..." required></textarea>
                         </div>
                         <div class="mb-4">
-                            <div class="file-upload-warm">
-                                <input type="file" name="image" id="imageUpload" accept="image/*">
-                                <label for="imageUpload">
-                                    <i class="fas fa-image"></i>
-                                    <span>添加图片 (可选)</span>
-                                </label>
+                            <input type="file" name="image" id="imageUpload" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(this)">
+                            
+                            <div class="d-flex flex-wrap gap-2" id="upload-grid">
+                                <!-- 预览图片将插入到这里 -->
+                                
+                                <div class="upload-btn-wrapper" id="upload-btn-wrapper" onclick="document.getElementById('imageUpload').click()">
+                                    <div class="file-upload-box">
+                                        <i class="fas fa-plus"></i>
+                                        <span>图片</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div id="image-preview" class="image-preview" style="display: none;">
-                                <img id="preview-img" src="" alt="预览">
-                                <button type="button" class="remove-image" onclick="removeImage()">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                            </div>
+                            <small class="text-muted mt-2 d-block" id="upload-hint">支持最多9张，点击图片右上角可删除</small>
                         </div>
                         <button type="submit" class="btn-treehole w-100">
                             <i class="fas fa-paper-plane"></i>
@@ -75,26 +75,164 @@
 
     <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script>
-        // 图片预览
-        document.getElementById('imageUpload').addEventListener('change', function (e) {
-            var file = e.target.files[0];
-            if (file) {
-                var reader = new FileReader();
-                reader.onload = function (e) {
-                    document.getElementById('preview-img').src = e.target.result;
-                    document.getElementById('image-preview').style.display = 'block';
-                    document.querySelector('.file-upload-warm label span').textContent = file.name;
-                };
-                reader.readAsDataURL(file);
-            }
-        });
+        const dt = new DataTransfer();
 
-        function removeImage() {
-            document.getElementById('imageUpload').value = '';
-            document.getElementById('image-preview').style.display = 'none';
-            document.querySelector('.file-upload-warm label span').textContent = '添加图片 (可选)';
+        function handleFileSelect(input) {
+            const files = input.files;
+            
+            // 将新选择的文件添加到 DataTransfer 对象中
+            for (let i = 0; i < files.length; i++) {
+                // 去重
+                let exists = false;
+                for(let j = 0; j < dt.files.length; j++) {
+                    if (dt.files[j].name === files[i].name && dt.files[j].size === files[i].size) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    dt.items.add(files[i]);
+                }
+            }
+
+            // 检查数量限制
+            if (dt.files.length > 9) {
+                alert('最多只能上传 9 张图片，已保留前 9 张');
+                const newDt = new DataTransfer();
+                for (let i = 0; i < 9; i++) {
+                    newDt.items.add(dt.files[i]);
+                }
+                dt.items.clear();
+                for (let i = 0; i < newDt.files.length; i++) {
+                    dt.items.add(newDt.files[i]);
+                }
+            }
+
+            // 更新 input 的 files
+            input.files = dt.files;
+            
+            // 清空 input value，以便允许重复选择相同文件（如果用户删除了又想加回来）
+            // input.value = ''; // 不能清空 value，因为 files 是绑定的。但是为了再次触发 change，可能需要？
+            // 实际上 handleFileSelect 是 onchange 触发的，如果 files 属性被我们手动设置了，下次选择同样的，input.value 变了，会触发。
+            // 但是为了保险，我们只在 updatePreview 里面不管它。
+            
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const grid = document.getElementById('upload-grid');
+            const btnWrapper = document.getElementById('upload-btn-wrapper');
+            const hint = document.getElementById('upload-hint');
+
+            // 移除所有现有的预览图（在按钮之前的）
+            const previews = grid.querySelectorAll('.preview-item');
+            previews.forEach(el => el.remove());
+
+            // 隐藏提示如果没有图片
+            if (dt.files.length > 0) {
+                 hint.textContent = `已选择 ${dt.files.length} / 9 张图片`;
+            } else {
+                 hint.textContent = '支持最多9张';
+            }
+
+            // 生成预览图
+            Array.from(dt.files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item position-relative';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'border rounded';
+                    img.style.width = '100px';
+                    img.style.height = '100px';
+                    img.style.objectFit = 'cover';
+                    
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 p-0 d-flex justify-content-center align-items-center';
+                    btn.style.width = '20px';
+                    btn.style.height = '20px';
+                    btn.style.transform = 'translate(30%, -30%)';
+                    btn.style.borderRadius = '50%';
+                    btn.innerHTML = '&times;';
+                    btn.onclick = function(ev) {
+                        ev.stopPropagation();
+                        removeFile(index);
+                    };
+
+                    div.appendChild(img);
+                    div.appendChild(btn);
+                    
+                    // 插入到按钮之前
+                    grid.insertBefore(div, btnWrapper);
+                }
+                reader.readAsDataURL(file);
+            });
+
+            // 控制按钮显示
+            if (dt.files.length >= 9) {
+                btnWrapper.style.display = 'none';
+            } else {
+                btnWrapper.style.display = 'block';
+            }
+        }
+
+        function removeFile(index) {
+            const newDt = new DataTransfer();
+            for (let i = 0; i < dt.files.length; i++) {
+                if (i !== index) {
+                    newDt.items.add(dt.files[i]);
+                }
+            }
+            dt.items.clear();
+            for (let i = 0; i < newDt.files.length; i++) {
+                dt.items.add(newDt.files[i]);
+            }
+            
+            document.getElementById('imageUpload').files = dt.files;
+            updatePreview();
         }
     </script>
+    
+    <style>
+        .file-upload-box {
+            width: 100px;
+            height: 100px;
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: #64748b;
+            background-color: #f8fafc;
+            transition: all 0.2s;
+        }
+
+        .file-upload-box:hover {
+            border-color: var(--treehole-primary, #059669);
+            color: var(--treehole-primary, #059669);
+            background-color: #f0fdf4;
+        }
+
+        .file-upload-box i {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .file-upload-box span {
+            font-size: 0.75rem;
+        }
+        
+        /* 覆盖之前的样式影响 */
+        .preview-item img {
+            width: 100px !important;
+            height: 100px !important;
+        }
+    </style>
 
     <style>
         .new-post-card {

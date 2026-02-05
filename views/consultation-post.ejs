@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>咨询详情 - 肇中2025</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+    <link rel="stylesheet" href="/css/image-grid.css">
+    <style>
+        .btn-consultation-sm {
+            background: #eff6ff;
+            color: #2563eb;
+            border: none;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        .btn-consultation-sm:hover {
+            background: #dbeafe;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/consultation" class="btn-warm-outline">
+                <i class="fas fa-arrow-left"></i>
+                <span>返回咨询专区</span>
+            </a>
+            <div class="nav-brand">
+                <span class="nav-brand-text">咨询详情</span>
+            </div>
+            <div style="width: 100px;"></div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8 col-md-10">
+                <!-- 主帖 -->
+                <div class="treehole-card post-detail-card">
+                    <div class="post-header d-flex flex-column align-items-start">
+                        <% if (post.title) { %>
+                            <h2 class="fw-bold text-dark mb-3" style="font-size: 1.5rem;"><%= post.title %></h2>
+                        <% } %>
+                        <div class="post-author w-100">
+                            <div class="post-avatar" style="background: <%= post.is_anonymous ? '#eff6ff' : '#dbeafe' %>; color: <%= post.is_anonymous ? '#93c5fd' : '#1d4ed8' %>;">
+                                <% if (post.is_anonymous) { %>
+                                    <i class="fas fa-user-secret"></i>
+                                <% } else { %>
+                                    <i class="fas fa-user"></i>
+                                <% } %>
+                            </div>
+                            <div class="post-author-info">
+                                <div class="post-author-name d-flex align-items-center gap-2">
+                                    <% if (post.is_anonymous) { %>
+                                        <span class="text-muted"><%= post.anonymousName || '匿名用户' %></span>
+                                    <% } else { %>
+                                        <%= post.username %>
+                                    <% } %>
+
+                                    <% if (post.displayIdentity) { %>
+                                        <span class="badge bg-info bg-opacity-10 text-info" style="font-size: 0.75rem; font-weight: normal;"><%= post.displayIdentity %></span>
+                                    <% } %>
+                                </div>
+                                <span class="post-time">
+                                    <%= moment(post.created_at).format('YYYY-MM-DD HH:mm') %>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="post-content" style="white-space: pre-wrap; margin-top: 1rem; font-size: 1.15rem; line-height: 1.6;"><%- post.content %></div>
+
+                    <% if (post.image) { %>
+                        <div class="mt-3">
+                            <% 
+                                let images = [];
+                                try {
+                                    if (post.image && post.image.trim().startsWith('[')) {
+                                        images = JSON.parse(post.image);
+                                    } else {
+                                        images = [post.image];
+                                    }
+                                } catch (e) { images = [post.image]; }
+                            %>
+                            <div class="image-grid" data-count="<%= images.length %>">
+                                <% images.forEach(function(img) { %>
+                                    <div class="image-item">
+                                        <img src="<%= img %>" alt="帖子图片" onclick="window.open('<%= img %>')">
+                                    </div>
+                                <% }); %>
+                            </div>
+                        </div>
+                    <% } %>
+
+                    <div class="post-actions d-flex justify-content-between align-items-center">
+                        <div class="action-btns d-flex align-items-center">
+                            <form action="/consultation/<%= post.id %>/like" method="POST" class="like-form">
+                                <button type="submit" class="action-btn <%= post.userLiked ? 'liked' : '' %>" style="<%= post.userLiked ? 'color: #ef4444;' : '' %>">
+                                    <i class="<%= post.userLiked ? 'fas' : 'far' %> fa-heart"></i>
+                                    <span class="count"><%= post.likes %></span>
+                                </button>
+                            </form>
+                            <span class="action-btn ms-3" style="cursor: default;">
+                                <i class="far fa-comment"></i>
+                                <span><%= comments.length %></span>
+                            </span>
+                        </div>
+                        <div class="action-right">
+                             <button type="button" class="action-btn text-secondary" style="font-size: 0.9rem;" onclick="if(confirm('确定要举报该内容吗？')){ alert('举报已提交，感谢您的反馈！'); }">
+                                <i class="fas fa-flag"></i> 举报
+                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 回复区 -->
+                <div class="replies-section">
+                    <div class="replies-header">
+                        <i class="fas fa-comments" style="color: #3b82f6;"></i>
+                        <span>回复 (<%= comments.length %>)</span>
+                    </div>
+
+                    <% if (comments.length===0) { %>
+                        <div class="treehole-card empty-replies">
+                            <p>还没有回复，来帮帮TA吧~</p>
+                        </div>
+                    <% } %>
+
+                    <% comments.forEach(function(comment) { %>
+                        <div class="treehole-card reply-card">
+                            <div class="reply-header">
+                                <div class="reply-author">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <% if (comment.is_anonymous) { %>
+                                            <span class="fw-bold text-muted"><%= comment.anonymousName || '匿名用户' %></span>
+                                        <% } else { %>
+                                            <span class="fw-bold"><%= comment.username %></span>
+                                        <% } %>
+
+                                        <% if (comment.displayIdentity) { %>
+                                            <span class="badge bg-info bg-opacity-10 text-info" style="font-size: 0.7rem;"><%= comment.displayIdentity %></span>
+                                        <% } %>
+                                        <% if (comment.user_id === post.user_id) { %>
+                                            <span class="badge bg-primary bg-opacity-10 text-primary" style="font-size: 0.7rem;">楼主</span>
+                                        <% } %>
+                                    </div>
+                                </div>
+                                <span class="reply-time">
+                                    <%= moment(comment.created_at).format('MM-DD HH:mm') %>
+                                </span>
+                            </div>
+
+                            <div class="reply-content">
+                                <p><%- comment.content.replace(/\n/g, '<br>' ) %></p>
+                            </div>
+                        </div>
+                    <% }); %>
+                </div>
+
+                <!-- 回复表单 -->
+                <div class="treehole-card reply-form-card">
+                    <div class="reply-form-title">
+                        <i class="fas fa-reply" style="color: #3b82f6;"></i>
+                        <span>发表回复</span>
+                    </div>
+                    <form action="/consultation/<%= post.id %>/comment" method="POST">
+                        <div class="mb-3">
+                            <textarea name="content" class="form-input-warm" rows="3" placeholder="写下你的回复..." required></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="replyAnonymous" name="anonymous">
+                                <label class="form-check-label small text-muted" for="replyAnonymous">匿名回复</label>
+                            </div>
+                            <button type="submit" class="btn-consultation-sm">发送</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const likeForm = document.querySelector('.like-form');
+            if (likeForm) {
+                likeForm.addEventListener('submit', async function (e) {
+                    e.preventDefault();
+                    const btn = this.querySelector('button');
+                    const icon = btn.querySelector('i');
+                    const countSpan = btn.querySelector('.count');
+
+                    try {
+                        const response = await fetch(this.action, {
+                            method: 'POST',
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            if (data.liked) {
+                                btn.classList.add('liked');
+                                btn.style.color = '#ef4444';
+                                icon.classList.remove('far');
+                                icon.classList.add('fas');
+                            } else {
+                                btn.classList.remove('liked');
+                                btn.style.color = '';
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                            }
+                            countSpan.textContent = data.count;
+                        }
+                    } catch (err) {
+                        console.error('点赞失败', err);
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
