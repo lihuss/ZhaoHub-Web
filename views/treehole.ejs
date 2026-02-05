@@ -8,6 +8,7 @@
     <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/treehole-style.css">
+    <link rel="stylesheet" href="/css/image-grid.css">
 </head>
 
 <body>
@@ -21,13 +22,17 @@
 
             <!-- Tab 切换 -->
             <div class="nav-tabs-wrapper">
-                <a href="/hall" class="nav-tab">
-                    <i class="fas fa-book-open"></i>
-                    <span>回忆录</span>
-                </a>
                 <a href="/treehole" class="nav-tab active">
                     <i class="fas fa-tree"></i>
                     <span>树洞</span>
+                </a>
+                <a href="/consultation" class="nav-tab">
+                    <i class="fas fa-question-circle"></i>
+                    <span>咨询专区</span>
+                </a>
+                <a href="/hall" class="nav-tab">
+                    <i class="fas fa-book-open"></i>
+                    <span>回忆录</span>
                 </a>
             </div>
 
@@ -48,6 +53,11 @@
                         </li>
                         <li>
                             <hr class="dropdown-divider">
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="/profile">
+                                <i class="fas fa-id-card me-2"></i>个人主页
+                            </a>
                         </li>
                         <li><a class="dropdown-item" href="/my-codes"><i class="fas fa-gift text-warning"></i> 我的邀请码</a>
                         </li>
@@ -123,8 +133,26 @@
                                     </div>
 
                                     <% if (post.image) { %>
-                                        <div class="post-image-preview">
-                                            <img src="<%= post.image %>" alt="帖子图片">
+                                        <div class="mt-2">
+                                            <% 
+                                                let images = [];
+                                                try {
+                                                    if (post.image.startsWith('[')) {
+                                                        images = JSON.parse(post.image);
+                                                    } else if (post.image) {
+                                                        images = [post.image];
+                                                    }
+                                                } catch (e) {
+                                                    images = post.image ? [post.image] : [];
+                                                }
+                                            %>
+                                            <div class="image-grid" data-count="<%= images.length %>">
+                                                <% images.forEach(function(img) { %>
+                                                    <div class="image-item">
+                                                        <img src="<%= img %>" alt="帖子图片" onclick="event.preventDefault(); window.open('<%= img %>')">
+                                                    </div>
+                                                <% }); %>
+                                            </div>
                                         </div>
                                         <% } %>
                                 </a>

@@ -39,6 +39,18 @@ app.use(async (req, res, next) => {
     if (req.session.userId) {
         try {
             const user = await auth.getUserById(req.session.userId);
+            if (user) {
+                // 判断是否为大学生
+                if (user.school_type === '高中') {
+                    const now = new Date();
+                    const gradYear = parseInt(user.graduation_year);
+                    // 6月9日
+                    const gradDate = new Date(gradYear, 5, 9); // Month is 0-indexed: 5 = June
+                    user.isCollegeStudent = now > gradDate;
+                } else {
+                    user.isCollegeStudent = false;
+                }
+            }
             res.locals.user = user;
         } catch (err) {
             console.error('获取用户信息失败:', err);
@@ -199,7 +211,7 @@ async function parseQuotes(content, currentPostId) {
 // 登录页
 app.get('/login', (req, res) => {
     if (req.session.userId) {
-        return res.redirect('/hall');
+        return res.redirect('/treehole');
     }
     res.render('login', { error: null, success: req.query.registered ? '注册成功，请登录！' : null });
 });
@@ -215,7 +227,7 @@ app.post('/login', async (req, res) => {
         }
 
         req.session.userId = user.id;
-        res.redirect('/hall');
+        res.redirect('/treehole');
     } catch (err) {
         console.error('登录失败:', err);
         res.render('login', { error: '登录失败，请稍后重试', success: null });
@@ -225,7 +237,7 @@ app.post('/login', async (req, res) => {
 // 注册页
 app.get('/register', (req, res) => {
     if (req.session.userId) {
-        return res.redirect('/hall');
+        return res.redirect('/treehole');
     }
     res.render('register', { error: null, inviteCode: req.query.code || '', formData: {} });
 });
@@ -298,6 +310,25 @@ app.get('/my-codes', requireAuth, async (req, res) => {
     } catch (err) {
         console.error('获取邀请码失败:', err);
         res.redirect('/hall');
+    }
+});
+
+// --- 个人主页 ---
+app.get('/profile', requireAuth, (req, res) => {
+    res.render('profile', { user: res.locals.user });
+});
+
+app.post('/profile/update', requireAuth, async (req, res) => {
+    try {
+        const { university } = req.body;
+        // 仅允许大学生更新大学信息
+        if (res.locals.user.isCollegeStudent) {
+            await db.query('UPDATE users SET university = ? WHERE id = ?', [university ? university.trim() : null, req.session.userId]);
+        }
+        res.redirect('/profile');
+    } catch (err) {
+        console.error('更新个人信息失败:', err);
+        res.redirect('/profile');
     }
 });
 
@@ -616,15 +647,16 @@ app.get('/class/:id', requireAuth, async (req, res) => {
 });
 
 // 发布帖子（支持匿名）
-app.post('/class/:id/post', requireAuth, upload.single('image'), async (req, res) => {
+app.post('/class/:id/post', requireAuth, upload.array('image', 9), async (req, res) => {
     try {
         const classId = req.params.id;
         const content = req.body.content;
         const userId = req.session.userId;
         const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
         let image = '';
-        if (req.file) {
-            image = '/uploads/' + req.file.filename;
+        if (req.files && req.files.length > 0) {
+            const images = req.files.map(file => '/uploads/' + file.filename);
+            image = JSON.stringify(images);
         }
 
         await db.query(
@@ -730,6 +762,209 @@ app.post('/post/:id/report', requireAuth, async (req, res) => {
 });
 
 // ============================
+// 咨询专区（Consultation）路由
+// ============================
+
+// 咨询专区首页
+app.get('/consultation', requireAuth, async (req, res) => {
+    try {
+        const [posts] = await db.query(`
+            SELECT p.*, u.username 
+            FROM consultation_posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            ORDER BY p.created_at DESC
+        `);
+
+        // 获取用户对每个帖子的点赞状态
+        for (let post of posts) {
+            // 分配匿名名字
+            if (post.is_anonymous) {
+                post.anonymousName = getAnonymousName(post.id, post.user_id, new Set());
+            }
+
+            try {
+                const [like] = await db.query(
+                    'SELECT id FROM consultation_likes WHERE post_id = ? AND user_id = ?',
+                    [post.id, req.session.userId]
+                );
+                post.userLiked = like.length > 0;
+            } catch (e) {
+                post.userLiked = false;
+            }
+        }
+
+        res.render('consultation', { posts, moment });
+    } catch (err) {
+        console.error('加载咨询专区失败:', err);
+        res.status(500).send('加载失败');
+    }
+});
+
+// 新建咨询帖子页面
+app.get('/consultation/new', requireAuth, (req, res) => {
+    res.render('consultation-new');
+});
+
+// 发布咨询帖子
+app.post('/consultation/post', requireAuth, upload.array('image', 9), async (req, res) => {
+    try {
+        const content = req.body.content?.trim();
+        const userId = req.session.userId;
+        const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
+
+        if (!content) {
+            return res.redirect('/consultation/new');
+        }
+
+        let image = '';
+        if (req.files && req.files.length > 0) {
+            const images = req.files.map(file => '/uploads/' + file.filename);
+            image = JSON.stringify(images);
+        }
+
+        await db.query(
+            'INSERT INTO consultation_posts (user_id, content, image, is_anonymous) VALUES (?, ?, ?, ?)',
+            [userId, content, image, isAnonymous]
+        );
+
+        res.redirect('/consultation');
+    } catch (err) {
+        console.error('发布咨询失败:', err);
+        res.send("<script>alert('发布失败，请稍后重试'); history.back();</script>");
+    }
+});
+
+// 咨询帖子详情
+app.get('/consultation/:id', requireAuth, async (req, res) => {
+    try {
+        const postId = req.params.id;
+
+        // 获取主帖
+        const [posts] = await db.query(`
+            SELECT p.*, u.username 
+            FROM consultation_posts p
+            LEFT JOIN users u ON p.user_id = u.id
+            WHERE p.id = ?
+        `, [postId]);
+
+        if (posts.length === 0) {
+            return res.redirect('/consultation');
+        }
+        const post = posts[0];
+
+        // 获取评论
+        const [comments] = await db.query(`
+            SELECT c.*, u.username, u.university, u.school_type, u.graduation_year
+            FROM consultation_comments c
+            LEFT JOIN users u ON c.user_id = u.id
+            WHERE c.post_id = ?
+            ORDER BY c.created_at ASC
+        `, [postId]);
+
+        // 构建匿名名字映射
+        const anonymousNameMap = buildAnonymousNameMap(post.id, post.user_id, comments);
+        
+        // 为帖主分配名字
+        if (post.is_anonymous) {
+            post.anonymousName = anonymousNameMap[post.user_id];
+        }
+
+        // 处理评论显示身份
+        const now = new Date();
+        comments.forEach(comment => {
+            // 分配匿名名字
+            if (comment.is_anonymous) {
+                comment.anonymousName = anonymousNameMap[comment.user_id];
+            }
+
+            comment.displayIdentity = null;
+            if (comment.school_type === '高中') {
+                const gradYear = parseInt(comment.graduation_year);
+                const gradDate = new Date(gradYear, 5, 9);
+                if (now > gradDate) {
+                    comment.displayIdentity = comment.university || '大学生';
+                }
+            }
+        });
+
+        // 检查点赞状态
+        const [like] = await db.query(
+            'SELECT id FROM consultation_likes WHERE post_id = ? AND user_id = ?',
+            [postId, req.session.userId]
+        );
+        post.userLiked = like.length > 0;
+
+        res.render('consultation-post', { post, comments, moment });
+    } catch (err) {
+        console.error('加载咨询详情失败:', err);
+        res.redirect('/consultation');
+    }
+});
+
+// 评论咨询帖子
+app.post('/consultation/:id/comment', requireAuth, async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const content = req.body.content?.trim();
+        const userId = req.session.userId;
+        const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
+
+        if (!content) return res.redirect(`/consultation/${postId}`);
+
+        await db.query(
+            'INSERT INTO consultation_comments (post_id, user_id, content, is_anonymous) VALUES (?, ?, ?, ?)',
+            [postId, userId, content, isAnonymous]
+        );
+
+        await db.query(
+            'UPDATE consultation_posts SET reply_count = reply_count + 1 WHERE id = ?',
+            [postId]
+        );
+
+        res.redirect(`/consultation/${postId}`);
+    } catch (err) {
+        console.error('评论失败:', err);
+        res.redirect(`/consultation/${req.params.id}`);
+    }
+});
+
+// 点赞咨询帖子 (AJAX/Form)
+app.post('/consultation/:id/like', requireAuth, async (req, res) => {
+    try {
+        const postId = req.params.id;
+        const userId = req.session.userId;
+
+        const [existing] = await db.query(
+            'SELECT id FROM consultation_likes WHERE post_id = ? AND user_id = ?',
+            [postId, userId]
+        );
+
+        let liked = false;
+        if (existing.length === 0) {
+            await db.query('INSERT INTO consultation_likes (post_id, user_id) VALUES (?, ?)', [postId, userId]);
+            await db.query('UPDATE consultation_posts SET likes = likes + 1 WHERE id = ?', [postId]);
+            liked = true;
+        } else {
+            await db.query('DELETE FROM consultation_likes WHERE post_id = ? AND user_id = ?', [postId, userId]);
+            await db.query('UPDATE consultation_posts SET likes = GREATEST(likes - 1, 0) WHERE id = ?', [postId]);
+            liked = false;
+        }
+
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            const [updated] = await db.query('SELECT likes FROM consultation_posts WHERE id = ?', [postId]);
+            res.json({ success: true, liked, count: updated[0].likes });
+        } else {
+            res.redirect(`/consultation/${postId}`);
+        }
+    } catch (err) {
+        console.error('点赞失败:', err);
+        if (req.xhr) res.status(500).json({ success: false });
+        else res.redirect('back');
+    }
+});
+
+
+// ============================
 // 树洞（Tree Hole）路由
 // ============================
 
@@ -770,7 +1005,7 @@ app.get('/treehole/new', requireAuth, (req, res) => {
 });
 
 // 发布树洞帖子
-app.post('/treehole/post', requireAuth, upload.single('image'), async (req, res) => {
+app.post('/treehole/post', requireAuth, upload.array('image', 9), async (req, res) => {
     try {
         const content = req.body.content?.trim();
         const userId = req.session.userId;
@@ -780,8 +1015,9 @@ app.post('/treehole/post', requireAuth, upload.single('image'), async (req, res)
         }
 
         let image = '';
-        if (req.file) {
-            image = '/uploads/' + req.file.filename;
+        if (req.files && req.files.length > 0) {
+            const images = req.files.map(file => '/uploads/' + file.filename);
+            image = JSON.stringify(images);
         }
 
         // 发主帖 - parent_id 为 NULL

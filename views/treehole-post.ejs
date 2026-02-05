@@ -8,6 +8,8 @@
     <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/treehole-style.css">
+    <link rel="stylesheet" href="/css/treehole-fix.css">
+    <link rel="stylesheet" href="/css/image-grid.css">
 </head>
 
 <body>
@@ -69,9 +71,7 @@
                             <div class="post-author-info">
                                 <div class="post-author-name">
                                     <span class="op-badge">洞主</span>
-                                    <span class="anonymous-name">
-                                        <%= post.anonymousName %>
-                                    </span>
+                                    <span class="anonymous-name"><%= post.anonymousName %></span>
                                 </div>
                                 <span class="post-time">
                                     <%= moment(post.created_at).format('YYYY-MM-DD HH:mm') %>
@@ -86,8 +86,24 @@
                     </div>
 
                     <% if (post.image) { %>
-                        <div class="post-image">
-                            <img src="<%= post.image %>" alt="帖子图片" onclick="openImage(this.src)">
+                        <div class="mt-3">
+                            <% 
+                                let images = [];
+                                try {
+                                    if (post.image.trim().startsWith('[')) {
+                                        images = JSON.parse(post.image);
+                                    } else {
+                                        images = [post.image];
+                                    }
+                                } catch (e) { images = [post.image]; }
+                            %>
+                            <div class="image-grid" data-count="<%= images.length %>">
+                                <% images.forEach(function(img) { %>
+                                    <div class="image-item">
+                                        <img src="<%= img %>" alt="帖子图片" onclick="window.open('<%= img %>')">
+                                    </div>
+                                <% }); %>
+                            </div>
                         </div>
                         <% } %>
 
@@ -164,12 +180,7 @@
                                 <div class="treehole-card reply-card" id="reply-<%= reply.id %>">
                                     <div class="reply-header">
                                         <div class="reply-author">
-                                            <% if (reply.isOP) { %>
-                                                <span class="op-badge small">洞主</span>
-                                                <% } %>
-                                                    <span class="anonymous-name">
-                                                        <%= reply.anonymousName %>
-                                                    </span>
+                                            <% if (reply.isOP) { %><span class="op-badge small">洞主</span><% } %><span class="anonymous-name"><%= reply.anonymousName %></span>
                                         </div>
                                         <div class="reply-meta">
                                             <span class="global-id-badge">#<%= reply.id %></span>

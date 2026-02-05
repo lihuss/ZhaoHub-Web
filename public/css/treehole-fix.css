@@ -1,0 +1,80 @@
+
+/* Repair styles for reply author alignment */
+.reply-author {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-indent: 0 !important;
+}
+
+.reply-author .anonymous-name {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+
+.reply-author .op-badge {
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    background-color: var(--treehole-light);
+    color: var(--treehole-dark);
+    border-radius: 4px;
+    font-weight: bold;
+}
+
+/* Repair styles for Post Author (楼主) alignment */
+.post-author-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start !important; /* Force left alignment */
+    justify-content: center;
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+
+.post-author-name {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    text-align: left !important;
+}
+
+.post-author-name .anonymous-name {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
+}
+
+/* Hide op-badge in the main post header to remove extra spacing */
+.post-header .op-badge {
+    display: none !important;
+}
+
+/* General op-badge style if not scoped to reply-author */
+.op-badge {
+    display: inline-block;
+    margin-right: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.5rem;
+    background-color: var(--treehole-light);
+    color: var(--treehole-dark);
+    border-radius: 4px;
+    font-weight: bold;
+    line-height: normal;
+}
+
+/* Ensure post-author container aligns items correctly */
+.post-author {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem; /* Maintain gap between avatar and text */
+}
+
+/* Remove any potential text-indent */
+.post-author * {
+    text-indent: 0 !important;
+}
