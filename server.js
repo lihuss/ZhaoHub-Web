@@ -245,7 +245,32 @@ app.get('/register', (req, res) => {
 // 处理注册
 app.post('/register', async (req, res) => {
     try {
-        const { inviteCode, username, password, confirmPassword, campus, schoolType, graduationYear, className } = req.body;
+        let { inviteCode, username, password, confirmPassword, campus, schoolType, graduationYear, className } = req.body;
+
+        // 自动转换班级格式：如果只输入数字，根据届数和时间推算年级
+        if (className && /^\d+$/.test(className.trim())) {
+            const gradYear = parseInt(graduationYear);
+            if (!isNaN(gradYear)) {
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const currentMonth = now.getMonth() + 1; // 1-indexed
+                // 学年通常在8月结束，9月开始新学年
+                const academicYearEnd = currentMonth >= 8 ? currentYear + 1 : currentYear;
+
+                // 计算年级：3 - (毕业年份 - 当前学年结束年份)
+                // 例如：2026届在2025-2026学年（结束于2026）是 3 - (2026 - 2026) = 3 (高三)
+                let gradeNum = 3 - (gradYear - academicYearEnd);
+
+                // 边界处理：已毕业的按最高年级算，还没入学的按最低年级算
+                if (gradeNum > 3) gradeNum = 3;
+                if (gradeNum < 1) gradeNum = 1;
+
+                const gradeMap = { 1: '一', 2: '二', 3: '三' };
+                const prefix = (schoolType === '初中' ? '初' : '高') + gradeMap[gradeNum];
+                className = `${prefix}${className.trim()}班`;
+            }
+        }
+
         const formData = { username, campus, schoolType, graduationYear, className };
 
         // 验证密码
@@ -1692,6 +1717,87 @@ app.post('/treehole/:id/report', requireAuth, async (req, res) => {
 });
 
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+
+// ==========================================
+// 自动创建班级逻辑
+// ==========================================
+
+async function initAutoCreateClasses() {
+    try {
+        console.log('开始检查自动创建班级...');
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const currentMonth = now.getMonth() + 1; // 1-indexed
+
+        // 计算当前的高三届数
+        // 9月开学（Grade 3 Start），次年6月毕业（Graduation）
+        // 如果当前是 8月-12月，高三是 (currentYear + 1)届
+        // 如果当前是 1月-7月，高三是 currentYear届
+        const currentHigh3GradYear = currentMonth >= 8 ? currentYear + 1 : currentYear;
+
+        // 起始届数：2025（24届及以前不自动创建）
+        const startYear = 2025;
+
+        // if (currentHigh3GradYear < startYear) {
+        //     console.log('当前时间未达到自动创建班级的起始年份');
+        //     return 0;
+        // }
+
+        console.log(`正在检查 ${startYear} - ${currentHigh3GradYear} 届的班级回忆录...`);
+
+        let createdCount = 0;
+
+        // 遍历每一届
+        for (let year = startYear; year <= currentHigh3GradYear; year++) {
+            // 假设每个年级20个班
+            for (let i = 1; i <= 20; i++) {
+                const className = `高三${i}班`; // 统一格式，例如：高三1班
+                const fullName = `${year}届 ${className}`;
+
+                // 检查是否已存在
+                const [existing] = await db.query('SELECT id FROM classes WHERE full_name = ?', [fullName]);
+
+                if (existing.length === 0) {
+                    await db.query('INSERT INTO classes (name, full_name) VALUES (?, ?)', [className, fullName]);
+                    createdCount++;
+                }
+            }
+        }
+
+        if (createdCount > 0) {
+            console.log(`自动创建班级检查完成，共创建了 ${createdCount} 个班级`);
+        } else {
+            console.log('自动创建班级检查完成，无需创建新班级');
+        }
+        return createdCount;
+
+    } catch (err) {
+        console.error('自动创建班级失败:', err);
+        return 0;
+    }
+}
+
+// 管理员手动触发检查
+app.post('/admin/check-auto-classes', requireAuth, requireAdmin, async (req, res) => {
+    try {
+        const count = await initAutoCreateClasses();
+        const data = await getAdminData();
+        let successMsg = '';
+        if (count > 0) {
+            successMsg = `检查完成，已自动创建 ${count} 个新班级！`;
+        } else {
+            successMsg = '检查完成，当前没有需要创建的新班级。';
+        }
+        res.render('admin', { user: res.locals.user, ...data, newCodes: null, successMsg });
+    } catch (err) {
+        console.error('手动检查班级失败:', err);
+        res.redirect('/admin');
+    }
+});
+
+// 启动服务器前先执行初始化
+initAutoCreateClasses().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on http://localhost:${PORT}`);
+    });
 });
