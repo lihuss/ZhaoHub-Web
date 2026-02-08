@@ -158,9 +158,11 @@
                                 <div class="form-floating">
                                     <select class="form-select" id="graduationYear" name="graduationYear" required>
                                         <option value="">请选择</option>
-                                        <% for(let year = 2030; year >= 2010; year--) { %>
-                                            <option value="<%= year %>" <%= (typeof formData !== 'undefined' && formData.graduationYear == year) ? 'selected' : '' %>><%= year %>届</option>
-                                        <% } %>
+                                        <% for(let year=2030; year>= 2010; year--) { %>
+                                            <option value="<%= year %>" <%=(typeof formData !=='undefined' &&
+                                                formData.graduationYear==year) ? 'selected' : '' %>><%= year %>届
+                                            </option>
+                                            <% } %>
                                     </select>
                                     <label for="graduationYear">届</label>
                                 </div>
@@ -168,9 +170,9 @@
                             <div class="col-6">
                                 <div class="form-floating">
                                     <input type="text" class="form-control" id="className" name="className"
-                                        placeholder="班级" required
+                                        placeholder="例如：15" required
                                         value="<%= typeof formData !== 'undefined' && formData.className ? formData.className : '' %>">
-                                    <label for="className">班级（如：高三15班）</label>
+                                    <label for="className">班级（只需填写数字，如：15）</label>
                                 </div>
                             </div>
                         </div>
