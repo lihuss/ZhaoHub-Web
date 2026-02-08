@@ -83,30 +83,7 @@ function requireAdmin(req, res, next) {
     next();
 }
 
-// 配置图片上传
-// 生产环境：使用项目外的独立目录（不会被部署覆盖）
-// 开发环境：使用项目内的 public/uploads
-const UPLOADS_DIR = process.env.UPLOADS_DIR || (
-    process.env.NODE_ENV === 'production'
-        ? '/var/www/zqzx-uploads'  // 服务器上的独立目录
-        : path.join(__dirname, 'public/uploads')  // 本地开发
-);
-
-// 确保上传目录存在
-const fs = require('fs');
-if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, UPLOADS_DIR);
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-const upload = multer({ storage: storage });
+const { ImageService, UPLOADS_DIR } = require('./lib/storage');
 
 // 生产环境需要单独挂载 uploads 目录的静态服务
 if (process.env.NODE_ENV === 'production') {
@@ -717,17 +694,27 @@ app.get('/class/:id', requireAuth, async (req, res) => {
     }
 });
 
+
+
 // 发布帖子（支持匿名）
-app.post('/class/:id/post', requireAuth, upload.array('image', 9), async (req, res) => {
+// 使用 ImageService 获取 Multer 实例
+app.post('/class/:id/post', requireAuth, ImageService.getUploader().array('image', 9), async (req, res) => {
     try {
         const classId = req.params.id;
         const content = req.body.content;
         const userId = req.session.userId;
         const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
+
         let image = '';
         if (req.files && req.files.length > 0) {
-            const images = req.files.map(file => '/uploads/' + file.filename);
-            image = JSON.stringify(images);
+            // 通过 ImageService 获取最终存储的文件名列表
+            const filenames = await ImageService.handleUpload(req.files);
+
+            // 存入数据库的是相对路径 '/uploads/xxx.jpg'
+            // 也可以选择只存文件名，然后在读取时拼接
+            // 为了兼容旧逻辑，这里暂时拼接路径
+            const imagePaths = filenames.map(name => '/uploads/' + name);
+            image = JSON.stringify(imagePaths);
         }
 
         await db.query(
