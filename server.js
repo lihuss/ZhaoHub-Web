@@ -2,6 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const moment = require('moment');
 const session = require('express-session');
 const db = require('./db');
@@ -960,7 +961,7 @@ app.get('/consultation/answer', requireAuth, async (req, res) => {
 });
 
 // 发布咨询帖子
-app.post('/consultation/post', requireAuth, upload.array('image', 9), async (req, res) => {
+app.post('/consultation/post', requireAuth, ImageService.getUploader().array('image', 9), async (req, res) => {
     try {
         const content = req.body.content?.trim();
         const userId = req.session.userId;
@@ -977,8 +978,9 @@ app.post('/consultation/post', requireAuth, upload.array('image', 9), async (req
 
         let image = '';
         if (req.files && req.files.length > 0) {
-            const images = req.files.map(file => '/uploads/' + file.filename);
-            image = JSON.stringify(images);
+            const filenames = await ImageService.handleUpload(req.files);
+            const imagePaths = filenames.map(name => '/uploads/' + name);
+            image = JSON.stringify(imagePaths);
         }
 
         // 修改插入语句以支持新字段
@@ -1243,7 +1245,7 @@ app.get('/consultation/answer/:id/edit', requireAuth, async (req, res) => {
 });
 
 // 处理编辑回答提交
-app.post('/consultation/answer/:id/edit', requireAuth, upload.array('image', 9), async (req, res) => {
+app.post('/consultation/answer/:id/edit', requireAuth, ImageService.getUploader().array('image', 9), async (req, res) => {
     try {
         const answerId = req.params.id;
         const userId = req.session.userId;
@@ -1268,8 +1270,9 @@ app.post('/consultation/answer/:id/edit', requireAuth, upload.array('image', 9),
         // 处理图片：如果上传了新图片则使用新图片，否则保留原图片
         let image = existing[0].image;
         if (req.files && req.files.length > 0) {
-            const images = req.files.map(file => '/uploads/' + file.filename);
-            image = JSON.stringify(images);
+            const filenames = await ImageService.handleUpload(req.files);
+            const imagePaths = filenames.map(name => '/uploads/' + name);
+            image = JSON.stringify(imagePaths);
         } else if (req.body.keepImages === 'false') {
             image = '';
         }
@@ -1470,7 +1473,7 @@ app.get('/treehole/new', requireAuth, (req, res) => {
 });
 
 // 发布树洞帖子
-app.post('/treehole/post', requireAuth, upload.array('image', 9), async (req, res) => {
+app.post('/treehole/post', requireAuth, ImageService.getUploader().array('image', 9), async (req, res) => {
     try {
         const content = req.body.content?.trim();
         const userId = req.session.userId;
@@ -1481,8 +1484,9 @@ app.post('/treehole/post', requireAuth, upload.array('image', 9), async (req, re
 
         let image = '';
         if (req.files && req.files.length > 0) {
-            const images = req.files.map(file => '/uploads/' + file.filename);
-            image = JSON.stringify(images);
+            const filenames = await ImageService.handleUpload(req.files);
+            const imagePaths = filenames.map(name => '/uploads/' + name);
+            image = JSON.stringify(imagePaths);
         }
 
         // 发主帖 - parent_id 为 NULL
@@ -1573,7 +1577,7 @@ app.get('/treehole/:id', requireAuth, async (req, res) => {
 });
 
 // 回复树洞帖子
-app.post('/treehole/:id/reply', requireAuth, upload.single('image'), async (req, res) => {
+app.post('/treehole/:id/reply', requireAuth, ImageService.getUploader().single('image'), async (req, res) => {
     try {
         const postId = req.params.id;
         const content = req.body.content?.trim();
@@ -1585,7 +1589,10 @@ app.post('/treehole/:id/reply', requireAuth, upload.single('image'), async (req,
 
         let image = '';
         if (req.file) {
-            image = '/uploads/' + req.file.filename;
+            const filenames = await ImageService.handleUpload([req.file]);
+            if (filenames.length > 0) {
+                image = '/uploads/' + filenames[0];
+            }
         }
 
         // 插入回复 - parent_id 为主帖ID，使用自增ID作为全局唯一标识
