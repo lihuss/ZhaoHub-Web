@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发布闲置 - 市场 - 东湖畔</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+</head>
+
+<body>
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <img src="/images/icon.png" alt="校徽">
+                <span class="nav-brand-text">东湖畔</span>
+            </a>
+            <div class="nav-tabs-wrapper">
+                <a href="/treehole" class="nav-tab">
+                    <i class="fas fa-tree"></i>
+                    <span>树洞</span>
+                </a>
+                <a href="/consultation" class="nav-tab">
+                    <i class="fas fa-question-circle"></i>
+                    <span>咨询专区</span>
+                </a>
+                <a href="/market" class="nav-tab active">
+                    <i class="fas fa-store"></i>
+                    <span>集市</span>
+                </a>
+                <a href="/hall" class="nav-tab">
+                    <i class="fas fa-book-open"></i>
+                    <span>回忆录</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6">
+                <div class="card shadow-sm border-0">
+                    <div class="card-header bg-white py-3">
+                        <h5 class="mb-0"><i class="fas fa-plus-circle text-warning me-2"></i>发布闲置物品</h5>
+                    </div>
+                    <div class="card-body p-4">
+                        <form action="/market/new" method="POST" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <label for="title" class="form-label">商品名称 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="title" name="title" required placeholder="例如：闲置自行车、考研资料...">
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="price" class="form-label">价格 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="price" name="price" required placeholder="例如：50元、免费送、面议">
+                                <div class="form-text">平台完全免费，不收取任何手续费</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="description" class="form-label">商品描述</label>
+                                <textarea class="form-control" id="description" name="description" rows="4" placeholder="描述一下物品的新旧程度、转手原因等..."></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="contact_info" class="form-label">联系方式 <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="contact_info" name="contact_info" required placeholder="例如：微信 (你的微信号)、QQ (你的QQ号)、电话...">
+                                <div class="form-text text-warning"><i class="fas fa-exclamation-triangle"></i> 联系方式将公开显示，请注意保护隐私</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">商品图片</label>
+                                <input type="file" name="image" id="imageUpload" accept="image/*" multiple style="display: none;" onchange="handleFileSelect(this)">
+                                
+                                <div class="d-flex flex-wrap gap-2" id="upload-grid">
+                                    <div class="upload-btn-wrapper" id="upload-btn-wrapper" onclick="document.getElementById('imageUpload').click()" style="width: 100px; height: 100px; border: 2px dashed #ddd; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; color: #888;">
+                                        <i class="fas fa-plus fa-2x mb-1"></i>
+                                        <span class="small">上传</span>
+                                    </div>
+                                </div>
+                                <small class="text-muted mt-2 d-block" id="upload-hint">支持最多9张，点击图片右上角可删除</small>
+                            </div>
+
+                            <div class="form-check mb-4">
+                                <input class="form-check-input" type="checkbox" id="anonymous" name="anonymous">
+                                <label class="form-check-label" for="anonymous">
+                                    匿名发布 (勾选后将隐藏您的用户名，改为"匿名同学")
+                                </label>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-warning text-white py-2">立即发布</button>
+                                <a href="/market" class="btn btn-light py-2">取消</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const dt = new DataTransfer();
+
+        function handleFileSelect(input) {
+            const files = input.files;
+            
+            // 将新选择的文件添加到 DataTransfer 对象中
+            for (let i = 0; i < files.length; i++) {
+                // 去重
+                let exists = false;
+                for(let j = 0; j < dt.files.length; j++) {
+                    if (dt.files[j].name === files[i].name && dt.files[j].size === files[i].size) {
+                        exists = true;
+                        break;
+                    }
+                }
+                if (!exists) {
+                    dt.items.add(files[i]);
+                }
+            }
+
+            // 检查数量限制
+            if (dt.files.length > 9) {
+                alert('最多只能上传 9 张图片，已保留前 9 张');
+                const newDt = new DataTransfer();
+                for (let i = 0; i < 9; i++) {
+                    newDt.items.add(dt.files[i]);
+                }
+                dt.items.clear();
+                for (let i = 0; i < newDt.files.length; i++) {
+                    dt.items.add(newDt.files[i]);
+                }
+            }
+
+            // 更新 input 的 files
+            input.files = dt.files;
+            updatePreview();
+        }
+
+        function updatePreview() {
+            const grid = document.getElementById('upload-grid');
+            const btnWrapper = document.getElementById('upload-btn-wrapper');
+            const hint = document.getElementById('upload-hint');
+
+            // 移除所有现有的预览图
+            const previews = grid.querySelectorAll('.preview-item');
+            previews.forEach(el => el.remove());
+
+            // 隐藏提示如果没有图片
+            if (dt.files.length > 0) {
+                 hint.textContent = `已选择 ${dt.files.length} / 9 张图片`;
+            } else {
+                 hint.textContent = '支持最多9张';
+            }
+
+            // 生成预览图
+            Array.from(dt.files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item position-relative';
+                    div.style.width = '100px';
+                    div.style.height = '100px';
+                    
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'border rounded';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    
+                    const closeBtn = document.createElement('button');
+                    closeBtn.className = 'btn btn-sm btn-danger position-absolute top-0 end-0 p-0 rounded-circle';
+                    closeBtn.style.width = '20px';
+                    closeBtn.style.height = '20px';
+                    closeBtn.style.transform = 'translate(30%, -30%)';
+                    closeBtn.style.lineHeight = '1';
+                    closeBtn.innerHTML = '&times;';
+                    closeBtn.type = 'button';
+                    
+                    closeBtn.onclick = function() {
+                        dt.items.remove(index);
+                        document.getElementById('imageUpload').files = dt.files;
+                        updatePreview();
+                    };
+
+                    div.appendChild(img);
+                    div.appendChild(closeBtn);
+                    
+                    // 插入到按钮之前
+                    grid.insertBefore(div, btnWrapper);
+                }
+                reader.readAsDataURL(file);
+            });
+            
+            // 是否隐藏上传按钮 (如果满了9张)
+            if (dt.files.length >= 9) {
+                btnWrapper.style.display = 'none';
+            } else {
+                btnWrapper.style.display = 'flex';
+            }
+        }
+    </script>
+</body>
+</html>
