@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>问题详情 - 肇中2025</title>
+    <title>问题详情 - 东湖畔 ZhaoHub</title>
     <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/css/treehole-style.css">
@@ -48,7 +48,12 @@
             padding: 1.5rem;
         }
 
+        .post-detail-card {
+            padding: 1.5rem;
+        }
+
         .answer-card {
+            padding: 1.5rem;
             padding: 1.5rem;
             margin-bottom: 1rem;
             transition: box-shadow 0.2s;
@@ -393,255 +398,269 @@
                     </div>
 
                     <div class="post-content"
-                        style="white-space: pre-wrap; margin-top: 0.5rem; padding-bottom: 0.25rem; font-size: 1.15rem; line-height: 1.6;"><%-
-                            post.content %></div>
+                        style="white-space: pre-wrap; margin-top: 0.5rem; padding-bottom: 0.25rem; font-size: 1.15rem; line-height: 1.6;">
+                        <%- post.content %>
+                    </div>
 
                     <% if (post.image) { %>
                         <div class="mt-2">
-                            <% let images=[]; try { if (post.image && post.image.trim().startsWith('[')) {
-                                images=JSON.parse(post.image); } else { images=[post.image]; } } catch (e) {
-                                images=[post.image]; } %>
-                                <div class="image-grid" data-count="<%= images.length %>">
-                                    <% images.forEach(function(img) { %>
-                                        <div class="image-item">
-                                            <img src="<%= img %>" alt="帖子图片" onclick="window.open('<%= img %>')">
-                                        </div>
-                                        <% }); %>
+                            <div class="mt-2">
+                                <% let images=[]; try { if (post.image && post.image.trim().startsWith('[')) {
+                                    images=JSON.parse(post.image); } else { images=[post.image]; } } catch (e) {
+                                    images=[post.image]; } %>
+                                    <div class="image-grid" data-count="<%= images.length %>">
+                                        <% images.forEach(function(img) { %>
+                                            <div class="image-item">
+                                                <img src="<%= img %>" alt="帖子图片" onclick="window.open('<%= img %>')">
+                                            </div>
+                                            <% }); %>
+                                    </div>
+                            </div>
+                            <% } %>
+
+                                <div class="post-actions d-flex justify-content-between align-items-center">
+                                    <div class="action-btns d-flex align-items-center">
+                                        <span class="action-btn" style="cursor: default;">
+                                            <i class="far fa-comment"></i>
+                                            <span>
+                                                <%= answers.length %> 个回答
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div class="action-right">
+                                        <button type="button" class="action-btn text-secondary"
+                                            style="font-size: 0.9rem;"
+                                            onclick="if(confirm('确定要举报该内容吗？')){ alert('举报已提交，感谢您的反馈！'); }">
+                                            <i class="fas fa-flag"></i> 举报
+                                        </button>
+                                    </div>
                                 </div>
                         </div>
-                        <% } %>
 
-                            <div class="post-actions d-flex justify-content-between align-items-center">
-                                <div class="action-btns d-flex align-items-center">
-                                    <span class="action-btn" style="cursor: default;">
-                                        <i class="far fa-comment"></i>
+                        <!-- 写回答按钮区域 -->
+                        <% if (post.type==='question' ) { %>
+                            <div class="text-center my-4">
+                                <% if (userAnswer) { %>
+                                    <a href="/consultation/answer/<%= userAnswer.id %>/edit" class="btn-write-answer">
+                                        <i class="fas fa-edit"></i>
+                                        <span>编辑回答</span>
+                                    </a>
+                                    <% } else { %>
+                                        <a href="/consultation/answer?question_id=<%= post.id %>"
+                                            class="btn-write-answer">
+                                            <i class="fas fa-pen"></i>
+                                            <span>写回答</span>
+                                        </a>
+                                        <% } %>
+                            </div>
+                            <% } %>
+
+                                <!-- 回答区 -->
+                                <div class="replies-section">
+                                    <div class="replies-header">
+                                        <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
                                         <span>
                                             <%= answers.length %> 个回答
                                         </span>
-                                    </span>
-                                </div>
-                                <div class="action-right">
-                                    <button type="button" class="action-btn text-secondary" style="font-size: 0.9rem;"
-                                        onclick="if(confirm('确定要举报该内容吗？')){ alert('举报已提交，感谢您的反馈！'); }">
-                                        <i class="fas fa-flag"></i> 举报
-                                    </button>
-                                </div>
-                            </div>
-                </div>
+                                    </div>
 
-                <!-- 写回答按钮区域 -->
-                <% if (post.type==='question' ) { %>
-                    <div class="text-center my-4">
-                        <% if (userAnswer) { %>
-                            <a href="/consultation/answer/<%= userAnswer.id %>/edit" class="btn-write-answer">
-                                <i class="fas fa-edit"></i>
-                                <span>编辑回答</span>
-                            </a>
-                            <% } else { %>
-                                <a href="/consultation/answer?question_id=<%= post.id %>" class="btn-write-answer">
-                                    <i class="fas fa-pen"></i>
-                                    <span>写回答</span>
-                                </a>
-                                <% } %>
-                    </div>
-                    <% } %>
+                                    <% if (answers.length===0) { %>
+                                        <div class="treehole-card empty-replies">
+                                            <p>暂无回答，来分享你的见解吧~</p>
+                                        </div>
+                                        <% } %>
 
-                        <!-- 回答区 -->
-                        <div class="replies-section">
-                            <div class="replies-header">
-                                <i class="fas fa-lightbulb" style="color: #f59e0b;"></i>
-                                <span>
-                                    <%= answers.length %> 个回答
-                                </span>
-                            </div>
-
-                            <% if (answers.length===0) { %>
-                                <div class="treehole-card empty-replies">
-                                    <p>暂无回答，来分享你的见解吧~</p>
-                                </div>
-                                <% } %>
-
-                                    <% answers.forEach(function(answer) { %>
-                                        <div class="treehole-card answer-card">
-                                            <div class="answer-author">
-                                                <div class="answer-avatar">
-                                                    <% if (answer.is_anonymous) { %>
-                                                        <i class="fas fa-user-secret"></i>
-                                                        <% } else { %>
-                                                            <i class="fas fa-user"></i>
-                                                            <% } %>
-                                                </div>
-                                                <div>
-                                                    <div class="answer-meta">
-                                                        <% if (answer.is_anonymous) { %>
-                                                            <span class="fw-bold text-muted">
-                                                                <%= answer.anonymousName || '匿名用户' %>
-                                                            </span>
-                                                            <% } else { %>
-                                                                <span class="fw-bold">
-                                                                    <%= answer.username %>
-                                                                </span>
-                                                                <% } %>
-
-                                                                    <% if (answer.displayIdentity) { %>
-                                                                        <span
-                                                                            class="badge bg-info bg-opacity-10 text-info"
-                                                                            style="font-size: 0.7rem;">
-                                                                            <%= answer.displayIdentity %>
+                                            <% answers.forEach(function(answer) { %>
+                                                <div class="treehole-card answer-card">
+                                                    <div class="answer-author">
+                                                        <div class="answer-avatar">
+                                                            <% if (answer.is_anonymous) { %>
+                                                                <i class="fas fa-user-secret"></i>
+                                                                <% } else { %>
+                                                                    <i class="fas fa-user"></i>
+                                                                    <% } %>
+                                                        </div>
+                                                        <div>
+                                                            <div class="answer-meta">
+                                                                <% if (answer.is_anonymous) { %>
+                                                                    <span class="fw-bold text-muted">
+                                                                        <%= answer.anonymousName || '匿名用户' %>
+                                                                    </span>
+                                                                    <% } else { %>
+                                                                        <span class="fw-bold">
+                                                                            <%= answer.username %>
                                                                         </span>
                                                                         <% } %>
-                                                                            <% if (answer.user_id===post.user_id) { %>
+
+                                                                            <% if (answer.displayIdentity) { %>
                                                                                 <span
-                                                                                    class="badge bg-primary bg-opacity-10 text-primary"
-                                                                                    style="font-size: 0.7rem;">提问者</span>
+                                                                                    class="badge bg-info bg-opacity-10 text-info"
+                                                                                    style="font-size: 0.7rem;">
+                                                                                    <%= answer.displayIdentity %>
+                                                                                </span>
                                                                                 <% } %>
+                                                                                    <% if
+                                                                                        (answer.user_id===post.user_id)
+                                                                                        { %>
+                                                                                        <span
+                                                                                            class="badge bg-primary bg-opacity-10 text-primary"
+                                                                                            style="font-size: 0.7rem;">提问者</span>
+                                                                                        <% } %>
+                                                            </div>
+                                                            <small class="text-muted">
+                                                                <%= moment(answer.created_at).format('YYYY-MM-DD HH:mm')
+                                                                    %>
+                                                            </small>
+                                                        </div>
                                                     </div>
-                                                    <small class="text-muted">
-                                                        <%= moment(answer.created_at).format('YYYY-MM-DD HH:mm') %>
-                                                    </small>
-                                                </div>
-                                            </div>
 
-                                            <div class="answer-content">
-                                                <%- answer.content.replace(/\n/g, '<br>' ) %>
-                                            </div>
+                                                    <div class="answer-content">
+                                                        <%- answer.content.replace(/\n/g, '<br>' ) %>
+                                                    </div>
 
-                                            <% if (answer.image) { %>
-                                                <div class="mt-3">
-                                                    <% let answerImages=[]; try { if (answer.image &&
-                                                        answer.image.trim().startsWith('[')) {
-                                                        answerImages=JSON.parse(answer.image); } else {
-                                                        answerImages=[answer.image]; } } catch (e) {
-                                                        answerImages=[answer.image]; } %>
-                                                        <div class="image-grid" data-count="<%= answerImages.length %>">
-                                                            <% answerImages.forEach(function(img) { %>
-                                                                <div class="image-item">
-                                                                    <img src="<%= img %>" alt="回答图片"
-                                                                        onclick="window.open('<%= img %>')">
+                                                    <% if (answer.image) { %>
+                                                        <div class="mt-3">
+                                                            <% let answerImages=[]; try { if (answer.image &&
+                                                                answer.image.trim().startsWith('[')) {
+                                                                answerImages=JSON.parse(answer.image); } else {
+                                                                answerImages=[answer.image]; } } catch (e) {
+                                                                answerImages=[answer.image]; } %>
+                                                                <div class="image-grid"
+                                                                    data-count="<%= answerImages.length %>">
+                                                                    <% answerImages.forEach(function(img) { %>
+                                                                        <div class="image-item">
+                                                                            <img src="<%= img %>" alt="回答图片"
+                                                                                onclick="window.open('<%= img %>')">
+                                                                        </div>
+                                                                        <% }); %>
                                                                 </div>
-                                                                <% }); %>
                                                         </div>
-                                                </div>
-                                                <% } %>
+                                                        <% } %>
 
-                                                    <div class="answer-actions">
-                                                        <form action="/consultation/<%= answer.id %>/like" method="POST"
-                                                            class="like-form d-inline">
-                                                            <button type="submit"
-                                                                class="answer-upvote-btn <%= answer.userLiked ? 'upvoted' : '' %>">
-                                                                <span class="upvote-icon">▲</span>
-                                                                <span>赞同 <span class="count">
-                                                                        <%= answer.likes || 0 %>
-                                                                    </span></span>
-                                                            </button>
-                                                        </form>
+                                                            <div class="answer-actions">
+                                                                <form action="/consultation/<%= answer.id %>/like"
+                                                                    method="POST" class="like-form d-inline">
+                                                                    <button type="submit"
+                                                                        class="answer-upvote-btn <%= answer.userLiked ? 'upvoted' : '' %>">
+                                                                        <span class="upvote-icon">▲</span>
+                                                                        <span>赞同 <span class="count">
+                                                                                <%= answer.likes || 0 %>
+                                                                            </span></span>
+                                                                    </button>
+                                                                </form>
 
-                                                        <button type="button" class="answer-action-btn"
-                                                            onclick="toggleComments(<%= answer.id %>)">
-                                                            <i class="far fa-comment"></i>
-                                                            <span><%= answer.reply_count ? '评论 ' + answer.reply_count : '评论' %></span>
-                                                        </button>
-
-                                                        <% if (user && user.id===answer.user_id) { %>
-                                                            <a href="/consultation/answer/<%= answer.id %>/edit"
-                                                                class="answer-action-btn">
-                                                                <i class="fas fa-edit"></i>
-                                                                <span>编辑</span>
-                                                            </a>
-                                                            <form action="/consultation/answer/<%= answer.id %>/delete"
-                                                                method="POST" class="d-inline"
-                                                                onsubmit="return confirm('确定要删除这个回答吗？删除后无法恢复。')">
-                                                                <button type="submit"
-                                                                    class="answer-action-btn text-danger">
-                                                                    <i class="fas fa-trash-alt"></i>
-                                                                    <span>删除</span>
+                                                                <button type="button" class="answer-action-btn"
+                                                                    onclick="toggleComments(<%= answer.id %>)">
+                                                                    <i class="far fa-comment"></i>
+                                                                    <span>
+                                                                        <%= answer.reply_count ? '评论 ' +
+                                                                            answer.reply_count : '评论' %>
+                                                                    </span>
                                                                 </button>
-                                                            </form>
-                                                            <% } %>
 
-                                                                <% if (answer.updated_at) { %>
-                                                                    <span class="edited-badge">已编辑</span>
+                                                                <% if (user && user.id===answer.user_id) { %>
+                                                                    <a href="/consultation/answer/<%= answer.id %>/edit"
+                                                                        class="answer-action-btn">
+                                                                        <i class="fas fa-edit"></i>
+                                                                        <span>编辑</span>
+                                                                    </a>
+                                                                    <form
+                                                                        action="/consultation/answer/<%= answer.id %>/delete"
+                                                                        method="POST" class="d-inline"
+                                                                        onsubmit="return confirm('确定要删除这个回答吗？删除后无法恢复。')">
+                                                                        <button type="submit"
+                                                                            class="answer-action-btn text-danger">
+                                                                            <i class="fas fa-trash-alt"></i>
+                                                                            <span>删除</span>
+                                                                        </button>
+                                                                    </form>
                                                                     <% } %>
-                                                    </div>
 
-                                                    <!-- 评论区 -->
-                                                    <div class="answer-comments-section"
-                                                        id="comments-section-<%= answer.id %>" style="display: none;">
-                                                        <div class="comments-list" id="comments-list-<%= answer.id %>">
-                                                            <div class="no-comments">加载评论中...</div>
-                                                        </div>
-                                                        <div class="comment-form">
-                                                            <input type="text" class="comment-input"
-                                                                id="comment-input-<%= answer.id %>"
-                                                                placeholder="写下你的评论...">
-                                                            <button type="button" class="comment-submit-btn"
-                                                                onclick="submitComment(<%= answer.id %>)">发送</button>
-                                                        </div>
-                                                        <div class="comment-options">
-                                                            <label class="form-check-label small text-muted">
-                                                                <input type="checkbox" class="form-check-input"
-                                                                    id="comment-anonymous-<%= answer.id %>">
-                                                                匿名评论
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                        </div>
-                                        <% }); %>
-                        </div>
+                                                                        <% if (answer.updated_at) { %>
+                                                                            <span class="edited-badge">已编辑</span>
+                                                                            <% } %>
+                                                            </div>
+
+                                                            <!-- 评论区 -->
+                                                            <div class="answer-comments-section"
+                                                                id="comments-section-<%= answer.id %>"
+                                                                style="display: none;">
+                                                                <div class="comments-list"
+                                                                    id="comments-list-<%= answer.id %>">
+                                                                    <div class="no-comments">加载评论中...</div>
+                                                                </div>
+                                                                <div class="comment-form">
+                                                                    <input type="text" class="comment-input"
+                                                                        id="comment-input-<%= answer.id %>"
+                                                                        placeholder="写下你的评论...">
+                                                                    <button type="button" class="comment-submit-btn"
+                                                                        onclick="submitComment(<%= answer.id %>)">发送</button>
+                                                                </div>
+                                                                <div class="comment-options">
+                                                                    <label class="form-check-label small text-muted">
+                                                                        <input type="checkbox" class="form-check-input"
+                                                                            id="comment-anonymous-<%= answer.id %>">
+                                                                        匿名评论
+                                                                    </label>
+                                                                </div>
+                                                            </div>
+                                                </div>
+                                                <% }); %>
+                                </div>
+                </div>
             </div>
         </div>
-    </div>
 
-    <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
-    <script>
-        // Toggle comments section visibility and load comments
-        async function toggleComments(answerId) {
-            const section = document.getElementById('comments-section-' + answerId);
-            if (section.style.display === 'none') {
-                section.style.display = 'block';
-                await loadComments(answerId);
-            } else {
-                section.style.display = 'none';
-            }
-        }
-
-        // Load comments for an answer
-        async function loadComments(answerId) {
-            const listDiv = document.getElementById('comments-list-' + answerId);
-            try {
-                const response = await fetch('/api/consultation/answer/' + answerId + '/comments', {
-                    headers: { 'Accept': 'application/json' }
-                });
-                const data = await response.json();
-
-                if (data.success && data.comments) {
-                    if (data.comments.length === 0) {
-                        listDiv.innerHTML = '<div class="no-comments">暂无评论，快来发表第一条评论吧~</div>';
-                    } else {
-                        listDiv.innerHTML = data.comments.map(c => renderComment(c)).join('');
-                    }
+        <script src="/lib/bootstrap/js/bootstrap.bundle.min.js"></script>
+        <script>
+            // Toggle comments section visibility and load comments
+            async function toggleComments(answerId) {
+                const section = document.getElementById('comments-section-' + answerId);
+                if (section.style.display === 'none') {
+                    section.style.display = 'block';
+                    await loadComments(answerId);
                 } else {
+                    section.style.display = 'none';
+                }
+            }
+
+            // Load comments for an answer
+            async function loadComments(answerId) {
+                const listDiv = document.getElementById('comments-list-' + answerId);
+                try {
+                    const response = await fetch('/api/consultation/answer/' + answerId + '/comments', {
+                        headers: { 'Accept': 'application/json' }
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.comments) {
+                        if (data.comments.length === 0) {
+                            listDiv.innerHTML = '<div class="no-comments">暂无评论，快来发表第一条评论吧~</div>';
+                        } else {
+                            listDiv.innerHTML = data.comments.map(c => renderComment(c)).join('');
+                        }
+                    } else {
+                        listDiv.innerHTML = '<div class="no-comments">加载评论失败</div>';
+                    }
+                } catch (err) {
+                    console.error('加载评论失败:', err);
                     listDiv.innerHTML = '<div class="no-comments">加载评论失败</div>';
                 }
-            } catch (err) {
-                console.error('加载评论失败:', err);
-                listDiv.innerHTML = '<div class="no-comments">加载评论失败</div>';
             }
-        }
 
-        // Render a single comment
-        function renderComment(comment) {
-            const time = new Date(comment.created_at).toLocaleString('zh-CN', {
-                month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
-            });
-            const authorName = comment.is_anonymous
-                ? '<i class="fas fa-user-secret me-1"></i>' + (comment.anonymousName || '匿名用户')
-                : comment.username;
-            const identity = comment.displayIdentity
-                ? '<span class="badge bg-info bg-opacity-10 text-info ms-1" style="font-size: 0.65rem;">' + comment.displayIdentity + '</span>'
-                : '';
+            // Render a single comment
+            function renderComment(comment) {
+                const time = new Date(comment.created_at).toLocaleString('zh-CN', {
+                    month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+                const authorName = comment.is_anonymous
+                    ? '<i class="fas fa-user-secret me-1"></i>' + (comment.anonymousName || '匿名用户')
+                    : comment.username;
+                const identity = comment.displayIdentity
+                    ? '<span class="badge bg-info bg-opacity-10 text-info ms-1" style="font-size: 0.65rem;">' + comment.displayIdentity + '</span>'
+                    : '';
 
-            return `
+                return `
                 <div class="comment-item">
                     <div class="comment-header">
                         <span class="comment-author">${authorName}</span>
@@ -651,103 +670,103 @@
                     <div class="comment-content">${escapeHtml(comment.content)}</div>
                 </div>
             `;
-        }
-
-        // Escape HTML to prevent XSS
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        // Submit a comment
-        async function submitComment(answerId) {
-            const input = document.getElementById('comment-input-' + answerId);
-            const anonymousCheckbox = document.getElementById('comment-anonymous-' + answerId);
-            const content = input.value.trim();
-
-            if (!content) {
-                alert('请输入评论内容');
-                return;
             }
 
-            try {
-                const formData = new FormData();
-                formData.append('content', content);
-                if (anonymousCheckbox.checked) {
-                    formData.append('anonymous', 'on');
-                }
-
-                const response = await fetch('/consultation/answer/' + answerId + '/comment', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: new URLSearchParams(formData)
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    input.value = '';
-                    anonymousCheckbox.checked = false;
-                    // Reload comments to show the new one
-                    await loadComments(answerId);
-                } else {
-                    alert(data.error || '评论失败');
-                }
-            } catch (err) {
-                console.error('评论失败:', err);
-                alert('评论失败，请稍后重试');
+            // Escape HTML to prevent XSS
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
             }
-        }
 
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.like-form').forEach(form => {
-                form.addEventListener('submit', async function (e) {
-                    e.preventDefault();
-                    const btn = this.querySelector('button');
-                    const countSpan = btn.querySelector('.count');
+            // Submit a comment
+            async function submitComment(answerId) {
+                const input = document.getElementById('comment-input-' + answerId);
+                const anonymousCheckbox = document.getElementById('comment-anonymous-' + answerId);
+                const content = input.value.trim();
 
-                    try {
-                        const response = await fetch(this.action, {
-                            method: 'POST',
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest'
+                if (!content) {
+                    alert('请输入评论内容');
+                    return;
+                }
+
+                try {
+                    const formData = new FormData();
+                    formData.append('content', content);
+                    if (anonymousCheckbox.checked) {
+                        formData.append('anonymous', 'on');
+                    }
+
+                    const response = await fetch('/consultation/answer/' + answerId + '/comment', {
+                        method: 'POST',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: new URLSearchParams(formData)
+                    });
+
+                    const data = await response.json();
+
+                    if (data.success) {
+                        input.value = '';
+                        anonymousCheckbox.checked = false;
+                        // Reload comments to show the new one
+                        await loadComments(answerId);
+                    } else {
+                        alert(data.error || '评论失败');
+                    }
+                } catch (err) {
+                    console.error('评论失败:', err);
+                    alert('评论失败，请稍后重试');
+                }
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('.like-form').forEach(form => {
+                    form.addEventListener('submit', async function (e) {
+                        e.preventDefault();
+                        const btn = this.querySelector('button');
+                        const countSpan = btn.querySelector('.count');
+
+                        try {
+                            const response = await fetch(this.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest'
+                                }
+                            });
+                            const data = await response.json();
+
+                            if (data.success) {
+                                // Handle both old style (liked) and new style (upvoted) buttons
+                                if (data.liked) {
+                                    btn.classList.add('liked');
+                                    btn.classList.add('upvoted');
+                                } else {
+                                    btn.classList.remove('liked');
+                                    btn.classList.remove('upvoted');
+                                }
+                                if (countSpan) countSpan.textContent = data.count;
                             }
-                        });
-                        const data = await response.json();
-
-                        if (data.success) {
-                            // Handle both old style (liked) and new style (upvoted) buttons
-                            if (data.liked) {
-                                btn.classList.add('liked');
-                                btn.classList.add('upvoted');
-                            } else {
-                                btn.classList.remove('liked');
-                                btn.classList.remove('upvoted');
-                            }
-                            if (countSpan) countSpan.textContent = data.count;
+                        } catch (err) {
+                            console.error('点赞失败', err);
                         }
-                    } catch (err) {
-                        console.error('点赞失败', err);
-                    }
+                    });
                 });
-            });
 
-            // Allow Enter key to submit comments
-            document.querySelectorAll('.comment-input').forEach(input => {
-                input.addEventListener('keypress', function (e) {
-                    if (e.key === 'Enter') {
-                        const answerId = this.id.replace('comment-input-', '');
-                        submitComment(answerId);
-                    }
+                // Allow Enter key to submit comments
+                document.querySelectorAll('.comment-input').forEach(input => {
+                    input.addEventListener('keypress', function (e) {
+                        if (e.key === 'Enter') {
+                            const answerId = this.id.replace('comment-input-', '');
+                            submitComment(answerId);
+                        }
+                    });
                 });
             });
-        });
-    </script>
+        </script>
 </body>
 
 </html>
