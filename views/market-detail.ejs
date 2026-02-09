@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= item.title %> - 市场 - 东湖畔</title>
+    <link href="/lib/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="/lib/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/css/treehole-style.css">
+    <style>
+        .item-detail-img {
+            width: 100%;
+            border-radius: 8px;
+            max-height: 500px;
+            object-fit: contain;
+            background-color: #f8f9fa;
+        }
+        
+        .price-tag {
+            font-size: 1.5rem;
+            color: #e65100;
+            font-weight: bold;
+        }
+        
+        .contact-box {
+            background-color: #fff3e0;
+            border: 1px solid #ffe0b2;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .item-status-badge {
+            font-size: 0.9rem;
+            padding: 5px 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="warm-nav">
+        <div class="container">
+            <a href="/" class="nav-brand">
+                <img src="/images/icon.png" alt="校徽">
+                <span class="nav-brand-text">东湖畔</span>
+            </a>
+            <div class="nav-tabs-wrapper">
+                <a href="/treehole" class="nav-tab">
+                    <i class="fas fa-tree"></i>
+                    <span>树洞</span>
+                </a>
+                <a href="/consultation" class="nav-tab">
+                    <i class="fas fa-question-circle"></i>
+                    <span>咨询专区</span>
+                </a>
+                <a href="/market" class="nav-tab active">
+                    <i class="fas fa-store"></i>
+                    <span>集市</span>
+                </a>
+                <a href="/hall" class="nav-tab">
+                    <i class="fas fa-book-open"></i>
+                    <span>回忆录</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="/market">集市</a></li>
+                <li class="breadcrumb-item active" aria-current="page">商品详情</li>
+            </ol>
+        </nav>
+
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <h2 class="card-title mb-0"><%= item.title %></h2>
+                            <% if (item.status === 'sold') { %>
+                                <span class="badge bg-secondary item-status-badge">已售出</span>
+                            <% } else { %>
+                                <span class="badge bg-success item-status-badge">在售</span>
+                            <% } %>
+                        </div>
+                        
+                        <div class="mb-3 text-muted small">
+                            发布于 <%= moment(item.created_at).format('YYYY-MM-DD HH:mm') %> · 
+                            浏览 <%= item.view_count %> 次
+                        </div>
+
+                        <% 
+                            let images = [];
+                            try {
+                                if (item.image) {
+                                    if (item.image.trim().startsWith('[')) {
+                                        images = JSON.parse(item.image);
+                                    } else {
+                                        images = [item.image];
+                                    }
+                                } else if (item.image_url) { // fallback for legacy data
+                                     images = [item.image_url];
+                                }
+                            } catch (e) {
+                                if (item.image) images = [item.image];
+                            }
+                        %>
+
+                        <% if (images && images.length > 0) { %>
+                           <% if (images.length === 1) { %>
+                                <div class="mb-4 text-center bg-light p-2 rounded">
+                                    <img src="<%= images[0] %>" class="item-detail-img" alt="<%= item.title %>">
+                                </div>
+                           <% } else { %>
+                                <div id="marketCarousel" class="carousel slide mb-4 bg-light rounded" data-bs-ride="carousel">
+                                    <div class="carousel-indicators">
+                                        <% images.forEach((img, index) => { %>
+                                            <button type="button" data-bs-target="#marketCarousel" data-bs-slide-to="<%= index %>" class="<%= index === 0 ? 'active' : '' %>" aria-current="<%= index === 0 ? 'true' : 'false' %>" aria-label="Slide <%= index + 1 %>"></button>
+                                        <% }); %>
+                                    </div>
+                                    <div class="carousel-inner">
+                                        <% images.forEach((img, index) => { %>
+                                            <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+                                                <img src="<%= img %>" class="d-block w-100 item-detail-img" alt="<%= item.title %>">
+                                            </div>
+                                        <% }); %>
+                                    </div>
+                                    <button class="carousel-control-prev" type="button" data-bs-target="#marketCarousel" data-bs-slide="prev">
+                                        <span class="carousel-control-prev-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 50%;"></span>
+                                        <span class="visually-hidden">Previous</span>
+                                    </button>
+                                    <button class="carousel-control-next" type="button" data-bs-target="#marketCarousel" data-bs-slide="next">
+                                        <span class="carousel-control-next-icon" aria-hidden="true" style="background-color: rgba(0,0,0,0.5); border-radius: 50%;"></span>
+                                        <span class="visually-hidden">Next</span>
+                                    </button>
+                                </div>
+                                <!-- Thumbnails for large screens -->
+                                <div class="row g-2 mb-3">
+                                     <% images.forEach((img, index) => { %>
+                                        <div class="col-3 col-md-2">
+                                            <img src="<%= img %>" class="img-thumbnail" style="cursor: pointer; height: 60px; width: 100%; object-fit: cover;" onclick="document.querySelector('#marketCarousel').querySelector('[data-bs-slide-to=\'<%= index %>\']').click()">
+                                        </div>
+                                     <% }); %>
+                                </div>
+                           <% } %>
+                        <% } %>
+
+                        <h5 class="mt-4 border-bottom pb-2">商品描述</h5>
+                        <p class="card-text" style="white-space: pre-line; line-height: 1.6;"><%= item.description || '暂无描述' %></p>
+                        
+                        <!-- Likes and Report -->
+                        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+                             <div class="d-flex align-items-center">
+                                <button class="btn btn-link text-decoration-none p-0 me-3 <%= item.userLiked ? 'text-warning' : 'text-muted' %>" 
+                                        onclick="toggleLike(<%= item.id %>)" id="likeBtn-<%= item.id %>">
+                                    <i class="<%= item.userLiked ? 'fas' : 'far' %> fa-star"></i>
+                                    <span id="likeCount-<%= item.id %>"><%= item.likes || 0 %></span>
+                                </button>
+                                <span class="text-muted"><i class="far fa-comment"></i> <%= item.comments ? item.comments.length : 0 %></span>
+                             </div>
+                             <div>
+                                 <button class="btn btn-link text-muted p-0" onclick="document.getElementById('reportForm').style.display='block'">
+                                     <i class="fas fa-exclamation-circle"></i> 举报
+                                 </button>
+                             </div>
+                        </div>
+                        
+                        <!-- Report Form (Hidden) -->
+                         <div id="reportForm" class="mt-3 p-3 bg-light rounded" style="display: none;">
+                            <form action="/market/<%= item.id %>/report" method="POST">
+                                <div class="mb-2">
+                                    <label class="form-label">举报理由</label>
+                                    <textarea name="reason" class="form-control" rows="2" required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-end">
+                                    <button type="button" class="btn btn-sm btn-secondary me-2" onclick="document.getElementById('reportForm').style.display='none'">取消</button>
+                                    <button type="submit" class="btn btn-sm btn-danger">提交</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comments Section -->
+                 <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title mb-4">留言咨询</h5>
+                        
+                        <% if (item.comments && item.comments.length > 0) { %>
+                            <div class="comments-list">
+                                <% item.comments.forEach(comment => { %>
+                                    <% // 渲染评论及其子回复 %>
+                                    <div class="d-flex mb-3 pb-3 border-bottom">
+                                        <div class="me-3">
+                                            <div class="avatar-circle" style="width: 32px; height: 32px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-user small text-secondary"></i>
+                                            </div>
+                                        </div>
+                                        <div class="flex-grow-1">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <span class="fw-bold fs-6">
+                                                        <%= comment.is_anonymous ? (comment.anonymousName || 'Anonymous') : comment.username %>
+                                                    </span>
+                                                    <% if (comment.is_anonymous) { %>
+                                                        <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.7em;">匿名</span>
+                                                    <% } %>
+                                                </div>
+                                                <small class="text-muted"><%= moment(comment.created_at).format('MM-DD HH:mm') %></small>
+                                            </div>
+                                            <div class="mt-1 text-dark mb-2">
+                                                <%= comment.content %>
+                                            </div>
+                                            
+                                            <% if (user) { %>
+                                                <button class="btn btn-link text-decoration-none p-0 small text-muted" onclick="toggleReply('<%= comment.id %>')">
+                                                    <i class="fas fa-reply"></i> 回复
+                                                </button>
+                                                <!-- 回复表单 -->
+                                                <div id="reply-form-<%= comment.id %>" class="mt-2" style="display: none;">
+                                                    <form action="/market/<%= item.id %>/comment" method="POST">
+                                                        <input type="hidden" name="parent_id" value="<%= comment.id %>">
+                                                        <div class="input-group input-group-sm mb-2">
+                                                             <textarea name="content" class="form-control" rows="1" placeholder="回复 @<%= comment.is_anonymous ? (comment.anonymousName || 'Anonymous') : comment.username %>..." required></textarea>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between align-items-center">
+                                                            <div class="form-check form-check-inline mb-0">
+                                                                <input class="form-check-input" type="checkbox" id="anon-<%= comment.id %>" name="anonymous">
+                                                                <label class="form-check-label text-muted small" for="anon-<%= comment.id %>">匿名</label>
+                                                            </div>
+                                                            <button type="submit" class="btn btn-primary btn-sm py-0">发送</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            <% } %>
+
+                                            <!-- 显示回复 -->
+                                            <% if (comment.allReplies && comment.allReplies.length > 0) { %>
+                                                <div class="mt-2 pt-2 bg-light rounded px-2">
+                                                    <% comment.allReplies.forEach(reply => { %>
+                                                        <div class="mb-2 pb-2 border-bottom last-no-border">
+                                                            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                                                                <div class="small text-break me-2">
+                                                                    <span class="fw-bold text-dark">
+                                                                        <%= reply.is_anonymous ? (reply.anonymousName || 'Anonymous') : reply.username %>
+                                                                    </span>
+                                                                    <% if (reply.is_anonymous) { %>
+                                                                        <span class="badge bg-secondary text-white border ms-1" style="font-size: 0.6em; opacity: 0.8;">匿名</span>
+                                                                    <% } %>
+                                                                    
+                                                                    <% if (reply.depth > 1) { %>
+                                                                        <span class="text-secondary mx-1" style="font-size: 0.8em;"><i class="fas fa-caret-right"></i></span>
+                                                                        <span class="text-muted fw-bold" style="font-size: 0.9em;">
+                                                                            <%= reply.replyToUser %>
+                                                                        </span>
+                                                                    <% } %>
+                                                                </div>
+                                                                <small class="text-muted text-nowrap" style="font-size: 0.75rem;"><%= moment(reply.created_at).format('MM-DD HH:mm') %></small>
+                                                            </div>
+                                                            <div class="small text-secondary mt-1 text-break">
+                                                                <%= reply.content %>
+                                                            </div>
+                                                            <% if (user) { %>
+                                                                <div class="mt-1">
+                                                                    <button class="btn btn-link btn-sm p-0 text-decoration-none text-muted" style="font-size: 0.75rem;" onclick="toggleReply('<%= reply.id %>')">
+                                                                        回复
+                                                                    </button>
+                                                                </div>
+                                                                <!-- 回复框 (隐藏) -->
+                                                                <div id="reply-form-<%= reply.id %>" class="mt-2 d-none">
+                                                                    <form action="/market/<%= item.id %>/comment" method="POST">
+                                                                        <input type="hidden" name="parent_id" value="<%= reply.id %>">
+                                                                        <div class="input-group input-group-sm">
+                                                                            <input type="text" name="content" class="form-control" placeholder="回复 <%= reply.is_anonymous ? reply.anonymousName : reply.username %>..." required>
+                                                                            <button class="btn btn-primary" type="submit">发送</button>
+                                                                        </div>
+                                                                        <div class="form-check mt-1">
+                                                                            <input class="form-check-input" type="checkbox" id="anon-<%= reply.id %>" name="anonymous">
+                                                                            <label class="form-check-label text-muted small" for="anon-<%= reply.id %>">匿名</label>
+                                                                        </div>
+                                                                    </form>
+                                                                </div>
+                                                            <% } %>
+                                                        </div>
+                                                    <% }); %>
+                                                </div>
+                                            <% } %>
+                                        </div>
+                                    </div>
+                                <% }); %>
+                            </div>
+                        <% } else { %>
+                            <p class="text-center text-muted py-3">暂无留言，快来咨询吧~</p>
+                        <% } %>
+
+                        <% if (user) { %>
+                            <form action="/market/<%= item.id %>/comment" method="POST" class="mt-4">
+                                <div class="mb-3">
+                                    <textarea name="content" class="form-control" rows="3" placeholder="对商品感兴趣？留言问问吧..." required></textarea>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="anonymousCheck" name="anonymous">
+                                        <label class="form-check-label text-muted small" for="anonymousCheck">
+                                            匿名评论 (显示随机英文名)
+                                        </label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-sm px-4">发表留言</button>
+                                </div>
+                            </form>
+                        <% } else { %>
+                            <div class="text-center mt-4">
+                                <a href="/login" class="btn btn-outline-primary btn-sm">登录后留言</a>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body">
+                        <div class="price-tag mb-3"><%= item.price %></div>
+                        
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="avatar-circle me-3" style="width: 40px; height: 40px; background: #eee; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-user text-secondary"></i>
+                            </div>
+                            <div>
+                                <div class="fw-bold">
+                                    <%= item.is_anonymous ? '匿名同学' : item.username %>
+                                    <% if (item.is_anonymous) { %>
+                                        <span class="badge bg-light text-secondary border ms-1" style="font-size: 0.7em;">匿名</span>
+                                    <% } %>
+                                </div>
+                                <div class="small text-muted">发布者</div>
+                            </div>
+                        </div>
+
+                        <div class="contact-box">
+                            <h6 class="mb-2"><i class="fas fa-address-card me-2"></i>联系方式</h6>
+                            <div class="fw-bold text-dark"><%= item.contact_info %></div>
+                            <div class="small text-muted mt-2">
+                                <i class="fas fa-info-circle me-1"></i> 平台完全免费，请自行核实商品情况，谨防诈骗。
+                            </div>
+                        </div>
+
+                        <% if (user && (user.id === item.user_id || user.is_admin)) { %>
+                            <div class="d-grid gap-2 mt-4">
+                                <% if (item.status === 'active') { %>
+                                    <form action="/market/<%= item.id %>/status" method="POST">
+                                        <input type="hidden" name="status" value="sold">
+                                        <button class="btn btn-outline-secondary w-100" type="submit">标记为已售出</button>
+                                    </form>
+                                <% } else { %>
+                                    <form action="/market/<%= item.id %>/status" method="POST">
+                                        <input type="hidden" name="status" value="active">
+                                        <button class="btn btn-outline-success w-100" type="submit">重新上架</button>
+                                    </form>
+                                <% } %>
+                                
+                                <form action="/market/<%= item.id %>/delete" method="POST" onsubmit="return confirm('确定要删除这个商品吗？');">
+                                    <button class="btn btn-danger w-100" type="submit">删除商品</button>
+                                </form>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function toggleReply(commentId) {
+            const formObj = document.getElementById('reply-form-' + commentId);
+            if (formObj.style.display === 'none') {
+                formObj.style.display = 'block';
+            } else {
+                formObj.style.display = 'none';
+            }
+        }
+
+        async function toggleLike(id) {
+            try {
+                const btn = document.getElementById(`likeBtn-${id}`);
+                const icon = btn.querySelector('i');
+                const countSpan = document.getElementById(`likeCount-${id}`);
+                
+                const response = await fetch(`/market/${id}/like`, { 
+                    method: 'POST',
+                    headers: { 'Accept': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.liked) {
+                        btn.classList.remove('text-muted');
+                        btn.classList.add('text-warning');
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
+                    } else {
+                        btn.classList.remove('text-warning');
+                        btn.classList.add('text-muted');
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    countSpan.innerText = data.likes;
+                } else {
+                    location.href = '/login'; // likely not logged in
+                }
+            } catch (err) {
+                console.error(err);
+                alert('操作失败');
+            }
+        }
+    </script>
+</body>
+</html>

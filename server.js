@@ -92,6 +92,313 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // ============================
+// 市场（Market）功能路由
+// ============================
+
+// 获得市场列表
+app.get('/market', async (req, res) => {
+    try {
+        const [items] = await db.query(`
+            SELECT m.*, u.username 
+            FROM market_items m 
+            JOIN users u ON m.user_id = u.id 
+            WHERE m.status != 'removed' 
+            ORDER BY m.created_at DESC
+        `);
+        // 格式化时间，如果 market.ejs 没用到 moment 后端也不需要传了，
+        // 但为了安全起见（有的 ejs 还是可能会用），最好还是让 views 自行处理
+        // 或者在这里把时间处理好。
+        // 这里沿用原来的风格，直接传数据对象
+        res.render('market', { user: res.locals.user, items: items, moment: moment });
+    } catch (err) {
+        console.error('获取市场列表失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// 发布新商品页面
+app.get('/market/new', requireAuth, (req, res) => {
+    console.log('Accessing market/new for user:', res.locals.user ? res.locals.user.username : 'unknown');
+    res.render('market-new', { user: res.locals.user });
+});
+
+// 提交新商品
+app.post('/market/new', requireAuth, ImageService.getUploader().array('image', 9), async (req, res) => {
+    const { title, price, description, contact_info } = req.body;
+    const isAnonymous = req.body.anonymous === 'on' ? 1 : 0;
+    
+    let image = '';
+    if (req.files && req.files.length > 0) {
+        try {
+            const filenames = await ImageService.handleUpload(req.files);
+            // 存入数据库的是相对路径 '/uploads/xxx.jpg'
+            const imagePaths = filenames.map(name => '/uploads/' + name);
+            // Use JSON string to store array
+            image = JSON.stringify(imagePaths);
+        } catch (err) {
+            console.error('图片处理失败:', err);
+            return res.status(500).send('图片上传失败');
+        }
+    }
+
+    try {
+        await db.query(
+            'INSERT INTO market_items (user_id, title, price, description, contact_info, image, is_anonymous) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [req.session.userId, title, price, description, contact_info, image, isAnonymous]
+        );
+        res.redirect('/market');
+    } catch (err) {
+        console.error('发布商品失败:', err);
+        res.status(500).send('发布失败');
+    }
+});
+
+// 查看商品详情
+app.get('/market/:id', async (req, res, next) => {
+    // 排除 favicon 等非 ID 请求
+    if (isNaN(req.params.id)) return next();
+    
+    try {
+        const [itemResult] = await db.query(`
+            SELECT m.*, u.username 
+            FROM market_items m 
+            JOIN users u ON m.user_id = u.id 
+            WHERE m.id = ?
+        `, [req.params.id]);
+
+        if (itemResult.length === 0) {
+            return res.status(404).send('商品不存在');
+        }
+        
+        const item = itemResult[0];
+        
+        // Make sure likes is 0 if null (though default is 0)
+        item.likes = item.likes || 0;
+
+        // 增加浏览量
+        await db.query('UPDATE market_items SET view_count = view_count + 1 WHERE id = ?', [req.params.id]);
+        
+        // 获取评论
+        const [comments] = await db.query(`
+            SELECT c.*, u.username 
+            FROM market_comments c 
+            JOIN users u ON c.user_id = u.id 
+            WHERE c.market_id = ? 
+            ORDER BY c.created_at ASC
+        `, [req.params.id]);
+
+         // Process anonymous names for comments
+         
+         const usedNames = new Set();
+         const commentsMap = {};
+         const rootComments = [];
+         
+         // Initialize and Map
+         comments.forEach(c => {
+             if (c.is_anonymous) {
+                 c.anonymousName = getAnonymousName(item.id, c.user_id, usedNames);
+                 usedNames.add(c.anonymousName);
+             }
+             c.replies = []; // Direct children
+             commentsMap[c.id] = c;
+         });
+
+         // Build Tree
+         comments.forEach(c => {
+             if (c.parent_id && commentsMap[c.parent_id]) {
+                 const parent = commentsMap[c.parent_id];
+                 parent.replies.push(c);
+                 // Add metadata about who is being replied to
+                 c.replyToUser = parent.is_anonymous ? (parent.anonymousName || 'Anonymous') : parent.username;
+             } else if (!c.parent_id) {
+                 rootComments.push(c);
+             }
+         });
+         
+         // Flatten descendants for each root to make rendering easier (Linear Thread View)
+         function getFlatReplies(comment, depth = 1) {
+             let all = [];
+             if (comment.replies && comment.replies.length > 0) {
+                 comment.replies.forEach(reply => {
+                     reply.depth = depth;
+                     all.push(reply);
+                     all = all.concat(getFlatReplies(reply, depth + 1));
+                 });
+             }
+             return all;
+         }
+         
+         rootComments.forEach(root => {
+             const flat = getFlatReplies(root);
+             // Sort by time ascending
+             flat.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+             root.allReplies = flat;
+         });
+        
+        item.comments = rootComments;
+
+        // check if user liked
+        item.userLiked = false;
+        if (req.session.userId) {
+             const [likeResult] = await db.query('SELECT id FROM market_likes WHERE market_id = ? AND user_id = ?', [req.params.id, req.session.userId]);
+             if (likeResult.length > 0) {
+                 item.userLiked = true;
+             }
+        }
+
+        res.render('market-detail', { user: res.locals.user, item: item, moment: moment });
+    } catch (err) {
+        console.error('获取商品详情失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// 市场评论
+app.post('/market/:id/comment', requireAuth, async (req, res) => {
+    try {
+        const marketId = req.params.id;
+        const content = req.body.content;
+        const userId = req.session.userId;
+        const isAnonymous = req.body.anonymous === 'on' ? 1 : 0; 
+        const parentId = req.body.parent_id || null;
+
+        if (!content || !content.trim()) {
+            return res.redirect(`/market/${marketId}`);
+        }
+
+        await db.query('INSERT INTO market_comments (market_id, user_id, content, is_anonymous, parent_id) VALUES (?, ?, ?, ?, ?)', [marketId, userId, content, isAnonymous, parentId]);
+        
+        // Update reply count
+        await db.query('UPDATE market_items SET reply_count = reply_count + 1 WHERE id = ?', [marketId]);
+
+        res.redirect(`/market/${marketId}`);
+    } catch (err) {
+        console.error('评论失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// 市场点赞
+app.post('/market/:id/like', requireAuth, async (req, res) => {
+    try {
+        const marketId = req.params.id;
+        const userId = req.session.userId;
+
+        // check existing
+        const [existing] = await db.query('SELECT id FROM market_likes WHERE market_id = ? AND user_id = ?', [marketId, userId]);
+        
+        let liked = false;
+        if (existing.length === 0) {
+            await db.query('INSERT INTO market_likes (market_id, user_id) VALUES (?, ?)', [marketId, userId]);
+            await db.query('UPDATE market_items SET likes = likes + 1 WHERE id = ?', [marketId]);
+            liked = true;
+        } else {
+            await db.query('DELETE FROM market_likes WHERE market_id = ? AND user_id = ?', [marketId, userId]);
+             await db.query('UPDATE market_items SET likes = GREATEST(likes - 1, 0) WHERE id = ?', [marketId]);
+            liked = false;
+        }
+
+        if (req.xhr || req.headers.accept?.includes('application/json')) {
+            const [updated] = await db.query('SELECT likes FROM market_items WHERE id = ?', [marketId]);
+            res.json({ success: true, liked, likes: updated[0].likes }); // changed count to likes to match frontend
+        } else {
+            res.redirect(`/market/${marketId}`);
+        }
+
+    } catch (err) {
+        console.error('点赞失败:', err);
+         if (req.xhr) res.status(500).json({ success: false });
+        else res.redirect('back');
+    }
+});
+
+// 市场举报
+app.post('/market/:id/report', requireAuth, async (req, res) => {
+     try {
+        const marketId = req.params.id;
+        const reporterId = req.session.userId;
+        const reason = req.body.reason || '用户举报';
+
+        // Check duplicate
+         const [existing] = await db.query(
+            'SELECT id FROM market_reports WHERE market_id = ? AND reporter_id = ? AND status = "pending"',
+            [marketId, reporterId]
+        );
+
+        if (existing.length === 0) {
+            await db.query(
+                'INSERT INTO market_reports (market_id, reporter_id, reason) VALUES (?, ?, ?)',
+                [marketId, reporterId, reason]
+            );
+        }
+         res.send("<script>alert('举报成功，管理员会尽快处理。'); history.back();</script>");
+     } catch (err) {
+          console.error('举报失败:', err);
+        res.send("<script>alert('举报失败，请稍后重试。'); history.back();</script>");
+     }
+});
+
+// 我的发布
+app.get('/market/my', requireAuth, async (req, res) => {
+    try { // Add try-catch block here
+        const [items] = await db.query(`
+            SELECT m.*, u.username 
+            FROM market_items m 
+            JOIN users u ON m.user_id = u.id 
+            WHERE m.user_id = ? AND m.status != 'removed'
+            ORDER BY m.created_at DESC
+        `, [req.session.userId]); // Pass userId as parameter
+        
+        res.render('market', { user: res.locals.user, items: items, moment: moment });
+    } catch (err) {
+        console.error('获取我的发布失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// 更新商品状态（售出/上架）
+app.post('/market/:id/status', requireAuth, async (req, res) => {
+    const itemId = req.params.id;
+    const newStatus = req.body.status;
+    
+    try {
+        // 验证权属
+        const [item] = await db.query('SELECT user_id FROM market_items WHERE id = ?', [itemId]);
+        if (item.length === 0) return res.status(404).send('商品不存在');
+        
+        if (item[0].user_id !== req.session.userId && !res.locals.user.is_admin) {
+            return res.status(403).send('无权操作');
+        }
+        
+        await db.query('UPDATE market_items SET status = ? WHERE id = ?', [newStatus, itemId]);
+        res.redirect(`/market/${itemId}`);
+    } catch (err) {
+        console.error('更新状态失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// 删除商品（软删除）
+app.post('/market/:id/delete', requireAuth, async (req, res) => {
+    const itemId = req.params.id;
+    
+    try {
+        const [item] = await db.query('SELECT user_id FROM market_items WHERE id = ?', [itemId]);
+        if (item.length === 0) return res.status(404).send('商品不存在');
+        
+        if (item[0].user_id !== req.session.userId && !res.locals.user.is_admin) {
+            return res.status(403).send('无权操作');
+        }
+        
+        await db.query("UPDATE market_items SET status = 'removed' WHERE id = ?", [itemId]);
+        res.redirect('/market');
+    } catch (err) {
+        console.error('删除商品失败:', err);
+        res.status(500).send('服务器错误');
+    }
+});
+
+// ============================
 // 树洞匿名ID系统
 // ============================
 
